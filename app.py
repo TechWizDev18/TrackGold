@@ -9,8 +9,10 @@ import plotly.utils
 import json
 import threading
 import os
-import signal
-from contextlib import contextmanager
+import warnings
+
+# Suppress yfinance warnings
+warnings.filterwarnings('ignore')
 
 app = Flask(__name__)
 CORS(app)
@@ -26,32 +28,12 @@ analysis_status = {
 
 # Cache for gold price to avoid excessive API calls
 price_cache = {
-    'price': 4267.00,
+    'price': 2650.00,
     'change': 0.00,
     'change_pct': 0.00,
     'timestamp': datetime.now(),
-    'cache_duration': 30  # seconds
+    'cache_duration': 60  # seconds - increased for production
 }
-
-# Timeout context manager for analysis
-@contextmanager
-def timeout(seconds):
-    """Context manager to add timeout to operations."""
-    def timeout_handler(signum, frame):
-        raise TimeoutError(f"Operation exceeded {seconds} seconds")
-    
-    # Only use signal on Unix systems (not Windows)
-    if hasattr(signal, 'SIGALRM'):
-        old_handler = signal.signal(signal.SIGALRM, timeout_handler)
-        signal.alarm(seconds)
-        try:
-            yield
-        finally:
-            signal.alarm(0)
-            signal.signal(signal.SIGALRM, old_handler)
-    else:
-        # Windows doesn't support SIGALRM, so just yield without timeout
-        yield
 
 def get_current_gold_price_realtime():
     """
@@ -67,14 +49,14 @@ def get_current_gold_price_realtime():
         return price_cache
     
     try:
-        # Fetch last 5 trading days with DAILY intervals (not minute)
-        # This ensures we always have at least 2 data points
+        # Fetch last 5 trading days with DAILY intervals
         df = yf.download(
             "GC=F",
             period="5d",
-            interval="1d",  # FIXED: Use daily interval, not 1m
+            interval="1d",
             progress=False,
-            auto_adjust=True
+            auto_adjust=True,
+            timeout=10
         )
         
         if df is None or len(df) == 0:
@@ -100,7 +82,7 @@ def get_current_gold_price_realtime():
             'change': round(change, 2),
             'change_pct': round(change_pct, 2),
             'timestamp': datetime.now(),
-            'cache_duration': 30
+            'cache_duration': 60
         }
         
         print(f"✓ Updated price: ${price_cache['price']} (change: {price_cache['change']:+.2f}, {price_cache['change_pct']:+.2f}%)")
@@ -114,7 +96,7 @@ def get_current_gold_price_realtime():
 def get_gold_price_data(period="6mo"):
     """Fetch gold price data for charts."""
     try:
-        df = yf.download("GC=F", period=period, interval="1d", progress=False, auto_adjust=True)
+        df = yf.download("GC=F", period=period, interval="1d", progress=False, auto_adjust=True, timeout=10)
         
         if len(df) == 0:
             return None
@@ -190,24 +172,16 @@ def run_analysis_async():
         analysis_status['message'] = 'Initializing analysis...'
         analysis_status['error'] = None
         
-        # Add timeout protection (120 seconds for Render free tier)
-        try:
-            with timeout(120):
-                gold_crew = GoldTrackerCrew()
-                
-                analysis_status['progress'] = 30
-                analysis_status['message'] = 'Analyzing technical indicators...'
-                
-                result = gold_crew.kickoff()
-                
-                analysis_status['progress'] = 100
-                analysis_status['message'] = 'Analysis complete!'
-                analysis_status['result'] = str(result)
-        except TimeoutError:
-            analysis_status['error'] = 'Analysis took too long (>2 min). Please try again.'
-            analysis_status['message'] = 'Timeout - analysis incomplete'
-            print("Analysis timeout - exceeded 120 seconds")
-            return
+        gold_crew = GoldTrackerCrew()
+        
+        analysis_status['progress'] = 30
+        analysis_status['message'] = 'Analyzing technical indicators...'
+        
+        result = gold_crew.kickoff()
+        
+        analysis_status['progress'] = 100
+        analysis_status['message'] = 'Analysis complete!'
+        analysis_status['result'] = str(result)
         
         # Save report (only if filesystem is writable)
         try:
@@ -244,7 +218,7 @@ def dashboard():
 
 @app.route('/api/gold-price')
 def api_gold_price():
-    """API endpoint for current gold price - FIXED VERSION."""
+    """API endpoint for current gold price."""
     try:
         price_data = get_current_gold_price_realtime()
         
@@ -334,28 +308,12 @@ if __name__ == '__main__':
     except Exception as e:
         print(f"Warning: Cannot create reports directory: {e}")
     
-    # Detect if running on Render or locally
-    is_production = os.environ.get('RENDER', False)
-    port = int(os.environ.get('PORT', 5000))
+    # Get port from environment (Render sets this)
+    port = int(os.environ.get('PORT', 10000))
     
-    if not is_production:
-        # Local development - show startup info
-        print("🥇 GoldTracker Web App Starting...")
-        print("📊 Testing gold price API...")
-        
-        # Test price fetching on startup
-        try:
-            test_price = get_current_gold_price_realtime()
-            print(f"✓ Current Gold Price: ${test_price['price']} ({test_price['change']:+.2f}, {test_price['change_pct']:+.2f}%)")
-        except Exception as e:
-            print(f"✗ Price fetch failed: {e}")
-        
-        print(f"🌐 Access the app at: http://127.0.0.1:{port}")
-        
-        # Run with debug mode locally
-        app.run(debug=True, host='0.0.0.0', port=port)
-    else:
-        # Production on Render - run without debug
-        print("🚀 Starting GoldTracker in production mode (Render)")
-        print(f"📡 Listening on port {port}")
-        app.run(debug=False, host='0.0.0.0', port=port)
+    print("🚀 Starting GoldTracker")
+    print(f"📡 Listening on port {port}")
+    
+    # ALWAYS run in production mode (debug=False)
+    # Gunicorn will handle this properly
+    app.run(debug=False, host='0.0.0.0', port=port)
