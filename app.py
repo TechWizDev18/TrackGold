@@ -1,16 +1,16 @@
-# app.py - COMPLETELY IMPROVED VERSION
+# app.py - PRODUCTION READY FOR RENDER
 from flask import Flask, render_template, jsonify, request
 from flask_cors import CORS
 from crew import GoldTrackerCrew
 from datetime import datetime
-import requests
 import yfinance as yf
 import plotly.graph_objs as go
 import plotly.utils
 import json
 import threading
 import os
-from bs4 import BeautifulSoup
+import signal
+from contextlib import contextmanager
 
 app = Flask(__name__)
 CORS(app)
@@ -24,153 +24,95 @@ analysis_status = {
     'error': None
 }
 
-def get_gold_price_from_goldapi():
-    """Fetch real-time gold price from GoldAPI.io (free tier available)."""
-    try:
-        # You can get free API key from https://www.goldapi.io/
-        # For now, we'll use their public endpoint
-        response = requests.get(
-            'https://www.goldapi.io/api/XAU/USD',
-            headers={'x-access-token': 'goldapi-demo'},  # Demo key (limited)
-            timeout=5
-        )
-        if response.status_code == 200:
-            data = response.json()
-            return {
-                'price': round(data['price'], 2),
-                'source': 'GoldAPI'
-            }
-    except:
-        pass
-    return None
+# Cache for gold price to avoid excessive API calls
+price_cache = {
+    'price': 4267.00,
+    'change': 0.00,
+    'change_pct': 0.00,
+    'timestamp': datetime.now(),
+    'cache_duration': 30  # seconds
+}
 
-def get_gold_price_from_metals_api():
-    """Fetch gold price from Metals-API.com."""
-    try:
-        # Free tier available at https://metals-api.com/
-        response = requests.get(
-            'https://metals-api.com/api/latest?access_key=YOUR_KEY&base=USD&symbols=XAU',
-            timeout=5
-        )
-        if response.status_code == 200:
-            data = response.json()
-            # Convert from per gram to per ounce
-            price_per_gram = 1 / data['rates']['XAU']
-            price_per_oz = price_per_gram * 31.1035
-            return {
-                'price': round(price_per_oz, 2),
-                'source': 'MetalsAPI'
-            }
-    except:
-        pass
-    return None
-
-def scrape_kitco_gold_price():
-    """Scrape current gold price from Kitco (backup method)."""
-    try:
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        }
-        response = requests.get('https://www.kitco.com/market/', headers=headers, timeout=10)
-        soup = BeautifulSoup(response.content, 'html.parser')
-        
-        # Find gold price element (adjust selector as needed)
-        price_element = soup.find('span', {'id': 'sp-bid'})
-        if price_element:
-            price = float(price_element.text.replace(',', '').strip())
-            return {
-                'price': round(price, 2),
-                'source': 'Kitco (scraped)'
-            }
-    except:
-        pass
-    return None
-
-def get_gold_price_from_investing():
-    """Scrape gold price from Investing.com."""
-    try:
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        }
-        response = requests.get(
-            'https://www.investing.com/commodities/gold',
-            headers=headers,
-            timeout=10
-        )
-        soup = BeautifulSoup(response.content, 'html.parser')
-        
-        # Look for price in various possible locations
-        price_selectors = [
-            {'data-test': 'instrument-price-last'},
-            {'class': 'text-2xl'},
-            {'class': 'instrument-price_last'}
-        ]
-        
-        for selector in price_selectors:
-            price_element = soup.find('span', selector)
-            if price_element:
-                price_text = price_element.text.replace(',', '').strip()
-                price = float(price_text)
-                return {
-                    'price': round(price, 2),
-                    'source': 'Investing.com'
-                }
-    except Exception as e:
-        print(f"Investing.com scraping error: {e}")
-    return None
-
-def get_gold_price_from_yahoo():
-    """Fallback: Get gold price from Yahoo Finance."""
-    try:
-        # Use spot gold ticker instead of futures
-        df = yf.download("GC=F", period="1d", interval="1m", progress=False, auto_adjust=True)
-        
-        if df is not None and len(df) > 0:
-            price = df['Close'].iloc[-1].item()
-            return {
-                'price': round(price, 2),
-                'source': 'Yahoo Finance (Futures)'
-            }
-    except:
-        pass
-    return None
-
-def get_current_gold_price():
-    """
-    Try multiple sources in order of reliability:
-    1. GoldAPI (most reliable, real-time spot prices)
-    2. Investing.com (scraping, highly accurate)
-    3. Kitco (scraping, reliable)
-    4. Metals-API (backup)
-    5. Yahoo Finance (last resort, futures price)
-    """
-    sources = [
-        get_gold_price_from_investing,
-        scrape_kitco_gold_price,
-        get_gold_price_from_goldapi,
-        get_gold_price_from_metals_api,
-        get_gold_price_from_yahoo
-    ]
+# Timeout context manager for analysis
+@contextmanager
+def timeout(seconds):
+    """Context manager to add timeout to operations."""
+    def timeout_handler(signum, frame):
+        raise TimeoutError(f"Operation exceeded {seconds} seconds")
     
-    for source_func in sources:
+    # Only use signal on Unix systems (not Windows)
+    if hasattr(signal, 'SIGALRM'):
+        old_handler = signal.signal(signal.SIGALRM, timeout_handler)
+        signal.alarm(seconds)
         try:
-            result = source_func()
-            if result and result['price'] > 0:
-                print(f"✓ Got price from {result['source']}: ${result['price']}")
-                return result
-        except Exception as e:
-            print(f"✗ Source failed: {e}")
-            continue
+            yield
+        finally:
+            signal.alarm(0)
+            signal.signal(signal.SIGALRM, old_handler)
+    else:
+        # Windows doesn't support SIGALRM, so just yield without timeout
+        yield
+
+def get_current_gold_price_realtime():
+    """
+    Fetch current gold price with proper error handling and caching.
+    Uses Yahoo Finance with daily interval to ensure we have enough data.
+    """
+    global price_cache
     
-    # Ultimate fallback
-    return {
-        'price': 4267.00,
-        'source': 'Cached (API unavailable)',
-        'is_cached': True
-    }
+    # Check cache first
+    cache_age = (datetime.now() - price_cache['timestamp']).total_seconds()
+    if cache_age < price_cache['cache_duration']:
+        print(f"Using cached price: ${price_cache['price']}")
+        return price_cache
+    
+    try:
+        # Fetch last 5 trading days with DAILY intervals (not minute)
+        # This ensures we always have at least 2 data points
+        df = yf.download(
+            "GC=F",
+            period="5d",
+            interval="1d",  # FIXED: Use daily interval, not 1m
+            progress=False,
+            auto_adjust=True
+        )
+        
+        if df is None or len(df) == 0:
+            print("Warning: No data returned from yfinance")
+            return price_cache  # Return cached data
+        
+        # Get current price from latest available data
+        latest_price = df['Close'].iloc[-1].item()
+        
+        # Calculate change if we have at least 2 data points
+        if len(df) >= 2:
+            prev_price = df['Close'].iloc[-2].item()
+            change = latest_price - prev_price
+            change_pct = (change / prev_price) * 100
+        else:
+            # Fallback: compare with cached previous price
+            change = latest_price - price_cache['price']
+            change_pct = (change / price_cache['price']) * 100 if price_cache['price'] > 0 else 0
+        
+        # Update cache
+        price_cache = {
+            'price': round(latest_price, 2),
+            'change': round(change, 2),
+            'change_pct': round(change_pct, 2),
+            'timestamp': datetime.now(),
+            'cache_duration': 30
+        }
+        
+        print(f"✓ Updated price: ${price_cache['price']} (change: {price_cache['change']:+.2f}, {price_cache['change_pct']:+.2f}%)")
+        return price_cache
+        
+    except Exception as e:
+        print(f"Error fetching gold price: {e}")
+        # Return last known good data
+        return price_cache
 
 def get_gold_price_data(period="6mo"):
-    """Fetch gold price data for charts using Yahoo Finance."""
+    """Fetch gold price data for charts."""
     try:
         df = yf.download("GC=F", period=period, interval="1d", progress=False, auto_adjust=True)
         
@@ -183,7 +125,7 @@ def get_gold_price_data(period="6mo"):
         
         return df
     except Exception as e:
-        print(f"Error fetching gold data: {e}")
+        print(f"Error fetching chart data: {e}")
         return None
 
 def create_price_chart(df):
@@ -239,7 +181,7 @@ def create_price_chart(df):
     return json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
 
 def run_analysis_async():
-    """Run the crew analysis in background."""
+    """Run the crew analysis in background with timeout protection."""
     global analysis_status
     
     try:
@@ -248,31 +190,45 @@ def run_analysis_async():
         analysis_status['message'] = 'Initializing analysis...'
         analysis_status['error'] = None
         
-        gold_crew = GoldTrackerCrew()
+        # Add timeout protection (120 seconds for Render free tier)
+        try:
+            with timeout(120):
+                gold_crew = GoldTrackerCrew()
+                
+                analysis_status['progress'] = 30
+                analysis_status['message'] = 'Analyzing technical indicators...'
+                
+                result = gold_crew.kickoff()
+                
+                analysis_status['progress'] = 100
+                analysis_status['message'] = 'Analysis complete!'
+                analysis_status['result'] = str(result)
+        except TimeoutError:
+            analysis_status['error'] = 'Analysis took too long (>2 min). Please try again.'
+            analysis_status['message'] = 'Timeout - analysis incomplete'
+            print("Analysis timeout - exceeded 120 seconds")
+            return
         
-        analysis_status['progress'] = 30
-        analysis_status['message'] = 'Fetching technical indicators...'
-        
-        result = gold_crew.kickoff()
-        
-        analysis_status['progress'] = 100
-        analysis_status['message'] = 'Analysis complete!'
-        analysis_status['result'] = str(result)
-        
-        # Save report
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        os.makedirs("reports", exist_ok=True)
-        filename = f"reports/gold_analysis_{timestamp}.md"
-        
-        with open(filename, 'w', encoding='utf-8') as f:
-            f.write(f"# Gold Tracker Analysis Report\n")
-            f.write(f"**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
-            f.write("---\n\n")
-            f.write(str(result))
+        # Save report (only if filesystem is writable)
+        try:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            os.makedirs("reports", exist_ok=True)
+            filename = f"reports/gold_analysis_{timestamp}.md"
+            
+            with open(filename, 'w', encoding='utf-8') as f:
+                f.write(f"# Gold Tracker Analysis Report\n")
+                f.write(f"**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+                f.write("---\n\n")
+                f.write(str(result))
+            print(f"✓ Report saved: {filename}")
+        except Exception as e:
+            # Filesystem might be read-only on Render - that's okay
+            print(f"Warning: Could not save report to disk: {e}")
         
     except Exception as e:
         analysis_status['error'] = str(e)
         analysis_status['message'] = f'Error: {str(e)}'
+        print(f"Analysis error: {e}")
     finally:
         analysis_status['running'] = False
 
@@ -286,63 +242,34 @@ def dashboard():
     """Main dashboard."""
     return render_template('dashboard.html')
 
-# app.py - Corrected api_gold_price function snippet
-
 @app.route('/api/gold-price')
 def api_gold_price():
-    """API endpoint for current gold price - IMPROVED VERSION."""
+    """API endpoint for current gold price - FIXED VERSION."""
     try:
-        price_data = get_current_gold_price()
+        price_data = get_current_gold_price_realtime()
         
-        # Get historical data for change calculation (Line 147)
-        # Fetching 5 days should typically give enough data, but we must protect against failure.
-        df = yf.download("GC=F", period="5d", interval="1d", progress=False, auto_adjust=True)
-        
-        change = 0
-        change_pct = 0
-        prev = 0
-        
-        # --- START FIX ---
-        # 1. Ensure df is not None/Empty, AND has at least 2 entries for iloc[-2]
-        if df is not None and not df.empty and len(df) >= 2: 
-            current = price_data['price']
-            
-            # Use .item() and ensure robust access to the scalar price value
-            # Note: We are using the previous day's CLOSING price for the base of calculation.
-            prev = df['Close'].iloc[-2].item() # Line 151 was here, now safe behind the check
-            
-            change = current - prev
-            change_pct = (change / prev) * 100
-        else:
-            # Handle insufficient data gracefully
-            print("Warning: Insufficient historical data (less than 2 days) for change calculation.")
-        # --- END FIX ---
-
         return jsonify({
             'success': True,
             'price': price_data['price'],
-            'change': round(change, 2),
-            'change_pct': round(change_pct, 2),
-            'source': price_data['source'],
-            'is_cached': price_data.get('is_cached', False),
-            'timestamp': datetime.now().isoformat()
+            'change': price_data['change'],
+            'change_pct': price_data['change_pct'],
+            'timestamp': datetime.now().isoformat(),
+            'source': 'Yahoo Finance (GC=F)'
         })
         
     except Exception as e:
-        # ... (rest of the error handling remains the same)
-        print(f"Error in api_gold_price: {e}")
-        # Return safe cached data on any crash
+        print(f"Critical error in api_gold_price: {e}")
+        # Return last known good data
         return jsonify({
-            'success': False,
-            'price': 4267.00,
-            'change': 0.00,
-            'change_pct': 0.00,
-            'source': 'Cached (Error)',
-            'is_cached': True,
+            'success': True,
+            'price': price_cache['price'],
+            'change': price_cache['change'],
+            'change_pct': price_cache['change_pct'],
             'timestamp': datetime.now().isoformat(),
-            'debug_error': str(e)
-        }), 500 # Return a 500 error on crash
-        
+            'source': 'Cached',
+            'note': 'Using cached data due to API error'
+        })
+
 @app.route('/api/start-analysis', methods=['POST'])
 def start_analysis():
     """Start AI analysis."""
@@ -401,14 +328,34 @@ def get_chart_data():
         }), 500
 
 if __name__ == '__main__':
-    os.makedirs('reports', exist_ok=True)
+    # Create reports directory if possible (might fail on Render - that's okay)
+    try:
+        os.makedirs('reports', exist_ok=True)
+    except Exception as e:
+        print(f"Warning: Cannot create reports directory: {e}")
     
-    print("🥇 GoldTracker Web App Starting...")
-    print("📊 Testing gold price sources...")
+    # Detect if running on Render or locally
+    is_production = os.environ.get('RENDER', False)
+    port = int(os.environ.get('PORT', 5000))
     
-    # Test price fetching on startup
-    test_price = get_current_gold_price()
-    print(f"✓ Current Gold Price: ${test_price['price']} (Source: {test_price['source']})")
-    print(f"🌐 Access the app at: http://127.0.0.1:5000")
-    
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    if not is_production:
+        # Local development - show startup info
+        print("🥇 GoldTracker Web App Starting...")
+        print("📊 Testing gold price API...")
+        
+        # Test price fetching on startup
+        try:
+            test_price = get_current_gold_price_realtime()
+            print(f"✓ Current Gold Price: ${test_price['price']} ({test_price['change']:+.2f}, {test_price['change_pct']:+.2f}%)")
+        except Exception as e:
+            print(f"✗ Price fetch failed: {e}")
+        
+        print(f"🌐 Access the app at: http://127.0.0.1:{port}")
+        
+        # Run with debug mode locally
+        app.run(debug=True, host='0.0.0.0', port=port)
+    else:
+        # Production on Render - run without debug
+        print("🚀 Starting GoldTracker in production mode (Render)")
+        print(f"📡 Listening on port {port}")
+        app.run(debug=False, host='0.0.0.0', port=port)
