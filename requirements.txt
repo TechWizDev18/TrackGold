@@ -1,0 +1,13 @@
+# Core CrewAI and LLM
+crewai
+crewai-tools
+google-genai
+python-dotenv
+
+# Data Analysis and Scraping
+pandas
+yfinance
+ta 
+feedparser 
+nltk 
+requests

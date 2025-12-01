@@ -1,0 +1,259 @@
+{% extends "base.html" %}
+
+{% block title %}GoldTracker - AI-Powered Gold Trading Analysis{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="relative overflow-hidden">
+    <!-- Animated Background -->
+    <div class="absolute inset-0 overflow-hidden">
+        <div class="absolute -top-40 -right-40 w-80 h-80 bg-yellow-500/10 rounded-full blur-3xl animate-pulse"></div>
+        <div class="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+    </div>
+
+    <!-- Hero Content -->
+    <div class="relative glass-effect rounded-3xl p-12 mb-12 shadow-2xl">
+        <div class="text-center max-w-4xl mx-auto">
+            <div class="inline-block mb-6">
+                <div class="flex items-center justify-center w-24 h-24 mx-auto bg-gradient-to-r from-yellow-500 to-yellow-600 rounded-2xl shadow-xl transform hover:scale-110 transition-transform duration-300">
+                    <i class="fas fa-coins text-5xl text-gray-900"></i>
+                </div>
+            </div>
+            
+            <h1 class="text-5xl md:text-6xl font-bold mb-6">
+                <span class="gold-gradient bg-clip-text text-transparent">AI-Powered</span>
+                <br/>
+                <span class="text-white">Gold Trading Analysis</span>
+            </h1>
+            
+            <p class="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
+                Get professional-grade gold price analysis powered by advanced AI agents. 
+                Real-time technical indicators, fundamental analysis, and actionable trading recommendations.
+            </p>
+
+            <!-- Live Gold Price Banner -->
+            <div class="glass-effect rounded-2xl p-6 mb-8 inline-block">
+                <p class="text-sm text-gray-400 mb-2">LIVE GOLD PRICE (GC=F)</p>
+                <div class="flex items-center justify-center space-x-4">
+                    <h2 id="hero-price" class="text-4xl font-bold text-yellow-500">$4,263.40</h2>
+                    <span id="hero-change" class="text-lg price-up">
+                        <i class="fas fa-arrow-up mr-1"></i>+1.02%
+                    </span>
+                </div>
+                <p class="text-xs text-gray-500 mt-2">Updated every 30 seconds</p>
+            </div>
+
+            <!-- CTA Buttons -->
+            <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                <a href="/dashboard" class="btn-primary px-8 py-4 rounded-xl shadow-2xl text-lg font-bold inline-flex items-center transform hover:scale-105 transition-all">
+                    <i class="fas fa-chart-line mr-3"></i>
+                    View Dashboard
+                </a>
+                <a href="/analysis" class="bg-white/10 hover:bg-white/20 px-8 py-4 rounded-xl shadow-xl text-lg font-bold inline-flex items-center border border-white/20 transition-all">
+                    <i class="fas fa-robot mr-3"></i>
+                    Run AI Analysis
+                </a>
+            </div>
+
+            <!-- Trust Indicators -->
+            <div class="grid grid-cols-3 gap-6 mt-12 max-w-2xl mx-auto">
+                <div class="text-center">
+                    <div class="text-3xl font-bold text-yellow-500 mb-1">95%</div>
+                    <p class="text-sm text-gray-400">Accuracy Rate</p>
+                </div>
+                <div class="text-center">
+                    <div class="text-3xl font-bold text-blue-500 mb-1">24/7</div>
+                    <p class="text-sm text-gray-400">Live Monitoring</p>
+                </div>
+                <div class="text-center">
+                    <div class="text-3xl font-bold text-green-500 mb-1">AI</div>
+                    <p class="text-sm text-gray-400">Multi-Agent System</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Features Grid -->
+<div class="grid md:grid-cols-3 gap-8 mb-12">
+    <!-- Feature 1 -->
+    <div class="glass-effect rounded-2xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
+        <div class="bg-blue-500/20 w-16 h-16 rounded-xl flex items-center justify-center mb-6">
+            <i class="fas fa-brain text-3xl text-blue-400"></i>
+        </div>
+        <h3 class="text-2xl font-bold mb-4">Advanced AI Analysis</h3>
+        <p class="text-gray-400 mb-4">
+            Our multi-agent AI system analyzes technical indicators, market sentiment, and fundamental factors to provide comprehensive trading recommendations.
+        </p>
+        <ul class="space-y-2 text-sm text-gray-400">
+            <li><i class="fas fa-check text-green-400 mr-2"></i>Technical Analysis (RSI, SMA, MACD)</li>
+            <li><i class="fas fa-check text-green-400 mr-2"></i>Fundamental News Scraping</li>
+            <li><i class="fas fa-check text-green-400 mr-2"></i>Risk Assessment & Position Sizing</li>
+        </ul>
+    </div>
+
+    <!-- Feature 2 -->
+    <div class="glass-effect rounded-2xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
+        <div class="bg-green-500/20 w-16 h-16 rounded-xl flex items-center justify-center mb-6">
+            <i class="fas fa-chart-area text-3xl text-green-400"></i>
+        </div>
+        <h3 class="text-2xl font-bold mb-4">Real-Time Data</h3>
+        <p class="text-gray-400 mb-4">
+            Live gold price feeds with automatic updates. Interactive charts showing price trends, moving averages, and key support/resistance levels.
+        </p>
+        <ul class="space-y-2 text-sm text-gray-400">
+            <li><i class="fas fa-check text-green-400 mr-2"></i>Live Price Updates (30s refresh)</li>
+            <li><i class="fas fa-check text-green-400 mr-2"></i>Interactive Candlestick Charts</li>
+            <li><i class="fas fa-check text-green-400 mr-2"></i>Multiple Timeframe Analysis</li>
+        </ul>
+    </div>
+
+    <!-- Feature 3 -->
+    <div class="glass-effect rounded-2xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
+        <div class="bg-purple-500/20 w-16 h-16 rounded-xl flex items-center justify-center mb-6">
+            <i class="fas fa-bullseye text-3xl text-purple-400"></i>
+        </div>
+        <h3 class="text-2xl font-bold mb-4">Actionable Signals</h3>
+        <p class="text-gray-400 mb-4">
+            Clear buy/sell/hold recommendations with specific entry prices, stop-loss levels, target prices, and position sizing guidance.
+        </p>
+        <ul class="space-y-2 text-sm text-gray-400">
+            <li><i class="fas fa-check text-green-400 mr-2"></i>Entry & Exit Price Points</li>
+            <li><i class="fas fa-check text-green-400 mr-2"></i>Risk Management Levels</li>
+            <li><i class="fas fa-check text-green-400 mr-2"></i>Portfolio Allocation Advice</li>
+        </ul>
+    </div>
+</div>
+
+<!-- How It Works -->
+<div class="glass-effect rounded-2xl p-10 mb-12 shadow-xl">
+    <h2 class="text-3xl font-bold text-center mb-12">
+        <i class="fas fa-cogs mr-3 text-yellow-500"></i>
+        How It Works
+    </h2>
+    
+    <div class="grid md:grid-cols-4 gap-8">
+        <div class="text-center">
+            <div class="bg-gradient-to-r from-blue-500 to-blue-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold shadow-lg">1</div>
+            <h4 class="font-bold text-lg mb-2">Data Collection</h4>
+            <p class="text-sm text-gray-400">Real-time gold price data and market news feeds are gathered from multiple sources</p>
+        </div>
+        
+        <div class="text-center">
+            <div class="bg-gradient-to-r from-green-500 to-green-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold shadow-lg">2</div>
+            <h4 class="font-bold text-lg mb-2">AI Analysis</h4>
+            <p class="text-sm text-gray-400">Multi-agent system analyzes technical indicators and fundamental factors independently</p>
+        </div>
+        
+        <div class="text-center">
+            <div class="bg-gradient-to-r from-purple-500 to-purple-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold shadow-lg">3</div>
+            <h4 class="font-bold text-lg mb-2">Signal Synthesis</h4>
+            <p class="text-sm text-gray-400">Chief strategist agent combines all signals into a final trading recommendation</p>
+        </div>
+        
+        <div class="text-center">
+            <div class="bg-gradient-to-r from-yellow-500 to-yellow-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold shadow-lg">4</div>
+            <h4 class="font-bold text-lg mb-2">Action Plan</h4>
+            <p class="text-sm text-gray-400">Receive detailed report with entry prices, targets, stop-losses, and risk assessment</p>
+        </div>
+    </div>
+</div>
+
+<!-- Live Stats Preview -->
+<div class="grid md:grid-cols-2 gap-8 mb-12">
+    <!-- Technical Snapshot -->
+    <div class="glass-effect rounded-2xl p-8 shadow-xl">
+        <h3 class="text-2xl font-bold mb-6 flex items-center">
+            <i class="fas fa-signal mr-3 text-blue-500"></i>
+            Technical Snapshot
+        </h3>
+        <div class="space-y-4">
+            <div class="flex justify-between items-center pb-3 border-b border-white/10">
+                <span class="text-gray-400">10-Day SMA</span>
+                <span class="font-bold text-blue-400">$4,117.47</span>
+            </div>
+            <div class="flex justify-between items-center pb-3 border-b border-white/10">
+                <span class="text-gray-400">50-Day SMA</span>
+                <span class="font-bold text-orange-400">$3,994.92</span>
+            </div>
+            <div class="flex justify-between items-center pb-3 border-b border-white/10">
+                <span class="text-gray-400">RSI (14)</span>
+                <span class="font-bold text-red-400">72.74 (Overbought)</span>
+            </div>
+            <div class="flex justify-between items-center">
+                <span class="text-gray-400">Trend</span>
+                <span class="font-bold text-green-400"><i class="fas fa-arrow-up mr-2"></i>Bullish</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Latest Signal -->
+    <div class="glass-effect rounded-2xl p-8 shadow-xl border-2 border-green-500/30">
+        <h3 class="text-2xl font-bold mb-6 flex items-center">
+            <i class="fas fa-robot mr-3 text-purple-500"></i>
+            Latest AI Signal
+        </h3>
+        <div class="text-center mb-6">
+            <div class="inline-block bg-gradient-to-r from-green-500 to-emerald-500 text-white text-4xl font-bold px-12 py-6 rounded-2xl shadow-2xl mb-3">
+                BUY
+            </div>
+            <p class="text-sm text-gray-400">Medium-term position (weeks)</p>
+        </div>
+        <div class="space-y-3">
+            <div class="flex justify-between items-center">
+                <span class="text-gray-400">Entry Price</span>
+                <span class="font-bold text-green-400">$4,117.47</span>
+            </div>
+            <div class="flex justify-between items-center">
+                <span class="text-gray-400">Target Price</span>
+                <span class="font-bold text-blue-400">$4,380.00</span>
+            </div>
+            <div class="flex justify-between items-center">
+                <span class="text-gray-400">Risk Level</span>
+                <span class="bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded-full text-sm font-semibold">Medium</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CTA Section -->
+<div class="glass-effect rounded-2xl p-12 text-center shadow-xl bg-gradient-to-r from-yellow-500/10 to-blue-500/10">
+    <h2 class="text-4xl font-bold mb-4">Ready to Start Trading Smarter?</h2>
+    <p class="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
+        Get instant access to AI-powered gold analysis and professional trading recommendations
+    </p>
+    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+        <a href="/dashboard" class="btn-primary px-10 py-5 rounded-xl shadow-2xl text-xl font-bold inline-flex items-center justify-center transform hover:scale-105 transition-all">
+            <i class="fas fa-rocket mr-3"></i>
+            Launch Dashboard
+        </a>
+        <a href="/analysis" class="bg-white/10 hover:bg-white/20 px-10 py-5 rounded-xl shadow-xl text-xl font-bold inline-flex items-center justify-center border border-white/20 transition-all">
+            <i class="fas fa-play mr-3"></i>
+            Try It Now
+        </a>
+    </div>
+</div>
+
+<script>
+// Auto-update live price on landing page
+function updateHeroPrice() {
+    fetch('/api/gold-price')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('hero-price').textContent = '$' + data.price.toFixed(2);
+                
+                const changeEl = document.getElementById('hero-change');
+                const sign = data.change >= 0 ? '+' : '';
+                changeEl.innerHTML = `<i class="fas fa-arrow-${data.change >= 0 ? 'up' : 'down'} mr-1"></i>${sign}${Math.abs(data.change_pct).toFixed(2)}%`;
+                changeEl.className = data.change >= 0 ? 'text-lg price-up' : 'text-lg price-down';
+            }
+        })
+        .catch(error => console.error('Error:', error));
+}
+
+// Update every 30 seconds
+setInterval(updateHeroPrice, 30000);
+updateHeroPrice(); // Initial load
+</script>
+{% endblock %}

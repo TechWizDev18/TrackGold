@@ -1,0 +1,14 @@
+# Virtual Environment
+venv/
+*.pyc
+
+# Configuration and Secrets (CRUCIAL!)
+.env
+
+# Data and Logs
+__pycache__/
+*.log
+
+# Operating System Files
+.DS_Store
+Thumbs.db

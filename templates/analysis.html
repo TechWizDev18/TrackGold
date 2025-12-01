@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="glass-effect rounded-2xl p-8 max-w-4xl mx-auto">
+    <h1 class="text-3xl font-bold mb-6">
+        <i class="fas fa-brain mr-3 text-purple-400"></i>
+        AI Analysis
+    </h1>
+    
+    <div id="progress-section">
+        <div class="mb-4">
+            <p id="status-message" class="text-gray-300 mb-2">Starting analysis...</p>
+            <div class="w-full bg-gray-700 rounded-full h-3">
+                <div id="progress-bar" class="gold-gradient h-3 rounded-full transition-all" style="width: 0%"></div>
+            </div>
+        </div>
+        <div class="flex justify-center mt-6">
+            <div class="spinner"></div>
+        </div>
+    </div>
+    
+    <div id="results-section" class="hidden">
+        <div class="bg-green-900/30 border border-green-500/30 rounded-xl p-6 mb-6">
+            <h2 class="text-2xl font-bold mb-4 text-green-400">
+                <i class="fas fa-check-circle mr-2"></i>Analysis Complete
+            </h2>
+            <div id="analysis-result"></div>
+        </div>
+        <button onclick="window.location.href='/dashboard'" class="btn-primary px-6 py-3 rounded-lg">
+            <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard
+        </button>
+    </div>
+    
+    <div id="error-section" class="hidden">
+        <div class="bg-red-900/30 border border-red-500/30 rounded-xl p-6">
+            <h2 class="text-2xl font-bold mb-4 text-red-400">Analysis Failed</h2>
+            <p id="error-message"></p>
+        </div>
+    </div>
+</div>
+
+<script>
+let pollInterval;
+
+function checkStatus() {
+    fetch('/api/analysis-status')
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('progress-bar').style.width = data.progress + '%';
+            document.getElementById('status-message').textContent = data.message;
+            
+            if (!data.running && data.result) {
+                clearInterval(pollInterval);
+                document.getElementById('progress-section').classList.add('hidden');
+                document.getElementById('results-section').classList.remove('hidden');
+                document.getElementById('analysis-result').innerHTML = '<pre class="text-gray-300 whitespace-pre-wrap">' + data.result + '</pre>';
+            }
+            
+            if (!data.running && data.error) {
+                clearInterval(pollInterval);
+                document.getElementById('progress-section').classList.add('hidden');
+                document.getElementById('error-section').classList.remove('hidden');
+                document.getElementById('error-message').textContent = data.error;
+            }
+        });
+}
+
+// Start analysis on page load
+fetch('/api/start-analysis', {method: 'POST'})
+    .then(() => {
+        pollInterval = setInterval(checkStatus, 2000);
+        checkStatus();
+    });
+</script>
+{% endblock %}

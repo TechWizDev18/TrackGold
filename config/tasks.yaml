@@ -1,0 +1,76 @@
+# config/tasks.yaml
+technical_analysis_task:
+  description: >
+    Use the Technical_Analysis_Tool to retrieve the latest gold price, 10-day vs. 50-day SMA status,
+    and 14-period RSI status. Based on the output, determine the Technical Signal (Strong Buy, Buy,
+    Neutral, Sell, Strong Sell) and provide a concise rationale.
+  expected_output: >
+    A concise report with the following format (NO markdown formatting, NO asterisks):
+    
+    TECHNICAL SIGNAL: [Signal]
+    
+    Current Price: $[price]
+    10-day SMA: $[price]
+    50-day SMA: $[price]
+    RSI: [value]
+    
+    RATIONALE:
+    [Clear explanation without markdown formatting]
+  agent: technical_analyst
+
+fundamental_sentiment_task:
+  description: >
+    Use the Fundamental_News_Scraper tool to collect recent headlines relevant to the Fed,
+    interest rates, and the US Dollar. Analyze the resulting news summary to determine the
+    Fundamental Signal (Bullish, Bearish, or Neutral) and explain which news theme is driving
+    the signal.
+  expected_output: >
+    A report with the following format (NO markdown formatting, NO asterisks):
+    
+    FUNDAMENTAL SIGNAL: [Signal]
+    
+    KEY THEMES:
+    [List the main themes driving the signal]
+    
+    RATIONALE:
+    [Clear explanation linking news themes to the signal]
+  agent: fundamental_economist
+  
+final_recommendation_task:
+  description: >
+    Receive the Technical Signal and the Fundamental Signal from the previous tasks. Synthesize
+    these two independent signals, paying attention to consensus or conflict between them. Your
+    final output must be a decisive Trading Recommendation (Strong Buy, Buy, Hold, Sell, or
+    Strong Sell) with specific actionable details. Use clean, structured format WITHOUT markdown
+    asterisks or symbols.
+  expected_output: >
+    A final report with this EXACT structure (NO markdown, NO asterisks, plain text only):
+    
+    ========================================
+    GOLDTRACKER FINAL RECOMMENDATION
+    ========================================
+    
+    RECOMMENDATION: [Strong Buy/Buy/Hold/Sell/Strong Sell]
+    ENTRY PRICE: $[price]
+    STOP-LOSS: $[price]
+    TARGET PRICE: $[price]
+    POSITION SIZE: [X]% of portfolio
+    TIMEFRAME: [Short/Medium/Long-term]
+    
+    TECHNICAL ANALYSIS:
+    [Summary of technical signals and rationale]
+    
+    FUNDAMENTAL ANALYSIS:
+    [Summary of fundamental drivers and themes]
+    
+    RISK ASSESSMENT: [High/Medium/Low]
+    [Justification for risk level]
+    
+    STRATEGY NOTES:
+    [Any additional strategic guidance]
+    
+    ========================================
+  agent: position_strategist
+  context:
+    - technical_analysis_task
+    - fundamental_sentiment_task

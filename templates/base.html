@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}GoldTracker - AI-Powered Gold Analysis{% endblock %}</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Plotly.js for charts -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Custom CSS -->
+    <style>
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            min-height: 100vh;
+        }
+        
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .gold-gradient {
+            background: linear-gradient(135deg, #d4af37 0%, #f4d03f 100%);
+        }
+        
+        .price-up {
+            color: #22c55e;
+            animation: pulse-green 2s infinite;
+        }
+        
+        .price-down {
+            color: #ef4444;
+            animation: pulse-red 2s infinite;
+        }
+        
+        @keyframes pulse-green {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        @keyframes pulse-red {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #d4af37 0%, #f4d03f 100%);
+            color: #0f172a;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(212, 175, 55, 0.3);
+        }
+        
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            border-top: 3px solid #d4af37;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="text-gray-100">
+    <!-- Navigation -->
+    <nav class="glass-effect shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center">
+                    <i class="fas fa-coins text-3xl text-yellow-500 mr-3"></i>
+                    <span class="text-2xl font-bold gold-gradient bg-clip-text text-transparent">
+                        GoldTracker
+                    </span>
+                </div>
+                <div class="flex space-x-4">
+                    <a href="/" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white/10 transition">
+                        <i class="fas fa-home mr-2"></i>Home
+                    </a>
+                    <a href="/dashboard" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white/10 transition">
+                        <i class="fas fa-chart-line mr-2"></i>Dashboard
+                    </a>
+                    <a href="/analysis" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white/10 transition">
+                        <i class="fas fa-robot mr-2"></i>AI Analysis
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-12 py-6 text-center text-gray-400">
+        <p>&copy; 2024 GoldTracker. Powered by AI & CrewAI.</p>
+    </footer>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
