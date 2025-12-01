@@ -286,25 +286,38 @@ def dashboard():
     """Main dashboard."""
     return render_template('dashboard.html')
 
+# app.py - Corrected api_gold_price function snippet
+
 @app.route('/api/gold-price')
 def api_gold_price():
     """API endpoint for current gold price - IMPROVED VERSION."""
     try:
-        # Get current price from multiple sources
         price_data = get_current_gold_price()
         
-        # Get historical data for change calculation
+        # Get historical data for change calculation (Line 147)
+        # Fetching 5 days should typically give enough data, but we must protect against failure.
         df = yf.download("GC=F", period="5d", interval="1d", progress=False, auto_adjust=True)
         
         change = 0
         change_pct = 0
+        prev = 0
         
-        if df is not None and len(df) >= 2:
+        # --- START FIX ---
+        # 1. Ensure df is not None/Empty, AND has at least 2 entries for iloc[-2]
+        if df is not None and not df.empty and len(df) >= 2: 
             current = price_data['price']
-            prev = df['Close'].iloc[-2].item()
+            
+            # Use .item() and ensure robust access to the scalar price value
+            # Note: We are using the previous day's CLOSING price for the base of calculation.
+            prev = df['Close'].iloc[-2].item() # Line 151 was here, now safe behind the check
+            
             change = current - prev
             change_pct = (change / prev) * 100
-        
+        else:
+            # Handle insufficient data gracefully
+            print("Warning: Insufficient historical data (less than 2 days) for change calculation.")
+        # --- END FIX ---
+
         return jsonify({
             'success': True,
             'price': price_data['price'],
@@ -316,17 +329,20 @@ def api_gold_price():
         })
         
     except Exception as e:
+        # ... (rest of the error handling remains the same)
         print(f"Error in api_gold_price: {e}")
+        # Return safe cached data on any crash
         return jsonify({
-            'success': True,
+            'success': False,
             'price': 4267.00,
-            'change': 5.50,
-            'change_pct': 0.13,
+            'change': 0.00,
+            'change_pct': 0.00,
             'source': 'Cached (Error)',
             'is_cached': True,
-            'timestamp': datetime.now().isoformat()
-        })
-
+            'timestamp': datetime.now().isoformat(),
+            'debug_error': str(e)
+        }), 500 # Return a 500 error on crash
+        
 @app.route('/api/start-analysis', methods=['POST'])
 def start_analysis():
     """Start AI analysis."""
