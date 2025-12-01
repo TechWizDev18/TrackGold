@@ -1,24 +1,32 @@
-# Core CrewAI and LLM
-crewai
+# Core Framework
+Flask==3.0.0
+flask-cors==4.0.0
+gunicorn==21.2.0
+
+# CrewAI and LLM
+crewai==0.86.0
 crewai-tools
 google-genai
-python-dotenv
+python-dotenv==1.0.0
 
-# Data Analysis and Scraping
-pandas
-yfinance
-ta 
-feedparser 
-nltk 
-requests
-
-flask==3.0.0
-flask-cors==4.0.0
-yfinance==0.2.40
-pandas==2.2.0
+# Data Analysis
+pandas==2.1.4
+numpy==1.26.3
 plotly==5.18.0
-crewai==0.86.0
+ta==0.11.0
+
+# Financial Data
+yfinance==0.2.40
+
+# Web Scraping & Parsing
 requests==2.31.0
 beautifulsoup4==4.12.3
 lxml==5.1.0
+feedparser==6.0.11
+
+# NLP & Text Processing
+nltk==3.8.1
+
+# Utilities
 python-dateutil==2.8.2
+```
