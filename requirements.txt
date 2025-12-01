@@ -4,7 +4,7 @@ gunicorn==21.2.0
 crewai==1.6.1
 crewai-tools
 google-genai
-python-dotenv==1.0.0
+python-dotenv>1.1.1
 pandas==2.1.4
 numpy==1.26.3
 plotly==5.18.0
