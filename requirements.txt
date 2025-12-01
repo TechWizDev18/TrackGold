@@ -11,3 +11,14 @@ ta
 feedparser 
 nltk 
 requests
+
+flask==3.0.0
+flask-cors==4.0.0
+yfinance==0.2.40
+pandas==2.2.0
+plotly==5.18.0
+crewai==0.86.0
+requests==2.31.0
+beautifulsoup4==4.12.3
+lxml==5.1.0
+python-dateutil==2.8.2

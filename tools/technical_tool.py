@@ -40,11 +40,11 @@ def get_technical_signals() -> str:
             rs = gain / loss
             df['RSI'] = 100 - (100 / (1 + rs))
             
-            # Get latest values - Fix FutureWarning
-            current_price = float(df['Close'].iloc[-1])
-            sma_10 = float(df['SMA_10'].iloc[-1])
-            sma_50 = float(df['SMA_50'].iloc[-1])
-            rsi = float(df['RSI'].iloc[-1])
+            # Get latest values - FIXED: Use .item() to avoid FutureWarning
+            current_price = df['Close'].iloc[-1].item()
+            sma_10 = df['SMA_10'].iloc[-1].item()
+            sma_50 = df['SMA_50'].iloc[-1].item()
+            rsi = df['RSI'].iloc[-1].item()
             
             # Calculate percentage difference for SMA crossover strength
             sma_diff_pct = ((sma_10 - sma_50) / sma_50) * 100
