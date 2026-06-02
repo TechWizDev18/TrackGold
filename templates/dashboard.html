@@ -1,420 +1,891 @@
 {% extends "base.html" %}
+{% block title %}Dashboard — TrackGold Institutional Terminal{% endblock %}
 
-{% block title %}Dashboard - GoldTracker{% endblock %}
+{% block extra_css %}
+
+/* ── Layout ───────────────────────────────────────────────────────── */
+.trinity-strip {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.6rem;
+    margin-bottom: 1.25rem;
+}
+.master-grid {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 1.25rem;
+}
+.left-col { display: flex; flex-direction: column; gap: 1.25rem; }
+.right-col { display: flex; flex-direction: column; gap: 1.25rem; }
+
+/* ── Asset KPI strip ─────────────────────────────────────────────── */
+.asset-kpi {
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: 10px;
+    padding: 0.9rem 1rem;
+    border-top: 2px solid;
+    transition: border-color 0.2s;
+    position: relative;
+    overflow: hidden;
+}
+.asset-kpi::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.015) 0%, transparent 60%);
+    pointer-events: none;
+}
+.asset-kpi.gold    { border-top-color: var(--gold); }
+.asset-kpi.silver  { border-top-color: #A8B2C1; }
+.asset-kpi.oil     { border-top-color: #E87A5D; }
+.asset-kpi.dxy     { border-top-color: var(--blue); }
+.asset-kpi.tnx     { border-top-color: #9B6EE8; }
+.asset-kpi.plat    { border-top-color: #7EC8C8; }
+.asset-kpi.copper  { border-top-color: #C97B4B; }
+.asset-kpi.ratio   { border-top-color: var(--purple); }
+
+.kpi-label { font-family: 'DM Mono', monospace; font-size: 9.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 3px; }
+.kpi-price { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1.25rem; line-height: 1.1; color: var(--text-primary); }
+.kpi-change { font-family: 'DM Mono', monospace; font-size: 10px; margin-top: 2px; }
+
+/* ── Terminal header ────────────────────────────────────────────── */
+.t-head {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border-light);
+    padding-bottom: 7px; margin-bottom: 11px;
+    display: flex; justify-content: space-between; align-items: center;
+}
+
+/* ── Data rows ───────────────────────────────────────────────────── */
+.dr { display: flex; justify-content: space-between; align-items: center; padding: 5.5px 0; border-bottom: 1px solid rgba(255,255,255,0.025); }
+.dr:last-child { border-bottom: none; }
+.dl { font-size: 12px; color: var(--text-secondary); }
+.dv { font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500; color: var(--text-primary); }
+
+/* ── Indicator grid (4-col) ────────────────────────────────────── */
+.ind-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.6rem; margin-top: 0.875rem; }
+.ind-cell {
+    background: rgba(255,255,255,0.025);
+    border: 1px solid var(--border-light);
+    border-radius: 7px; padding: 0.7rem 0.75rem;
+}
+.ind-lbl { font-family: 'DM Mono', monospace; font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 4px; }
+.ind-val { font-family: 'DM Mono', monospace; font-size: 0.95rem; font-weight: 600; }
+
+/* ── Sentiment gauge ────────────────────────────────────────────── */
+.sent-track { height: 5px; border-radius: 3px; background: rgba(255,255,255,0.08); margin: 7px 0; overflow: hidden; display: flex; }
+.sent-bear  { background: var(--red); height: 100%; transition: width 0.4s; }
+.sent-bull  { background: var(--green); height: 100%; transition: width 0.4s; }
+
+/* ── Correlation matrix ─────────────────────────────────────────── */
+.corr-table { width: 100%; border-collapse: collapse; font-family: 'DM Mono', monospace; font-size: 11px; }
+.corr-table th { padding: 5px 8px; color: var(--text-muted); text-align: center; font-weight: 500; }
+.corr-table td { padding: 5px 8px; text-align: center; border-radius: 3px; font-weight: 600; }
+
+/* ── Regime badge ───────────────────────────────────────────────── */
+.regime-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 5px; font-size: 11px; font-weight: 700;
+    font-family: 'DM Mono', monospace; letter-spacing: 0.08em; text-transform: uppercase;
+    border: 1px solid;
+}
+.regime-red    { color: var(--red);    background: rgba(224,82,82,0.12);   border-color: rgba(224,82,82,0.3); }
+.regime-gold   { color: var(--gold-light); background: rgba(201,168,76,0.12); border-color: var(--border); }
+.regime-orange { color: #E8943A; background: rgba(232,148,58,0.12); border-color: rgba(232,148,58,0.3); }
+.regime-green  { color: var(--green);  background: rgba(61,186,122,0.12);  border-color: rgba(61,186,122,0.3); }
+.regime-gray   { color: var(--text-muted); background: rgba(255,255,255,0.05); border-color: var(--border-light); }
+
+/* ── Local currency grid ─────────────────────────────────────────── */
+.local-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; margin-top: 0.75rem; }
+.local-cell {
+    background: rgba(255,255,255,0.025);
+    border: 1px solid var(--border-light);
+    border-radius: 6px; padding: 0.55rem 0.7rem;
+}
+
+/* ── Macro headline item ────────────────────────────────────────── */
+.headline-item {
+    padding: 7px 0 7px 10px;
+    border-left: 2px solid;
+    margin-bottom: 6px;
+    line-height: 1.4;
+}
+.headline-bull { border-color: var(--green); }
+.headline-bear { border-color: var(--red); }
+.headline-neut { border-color: var(--border-light); }
+
+/* ── CB Reserve bar ─────────────────────────────────────────────── */
+.cb-bar-outer { height: 4px; background: rgba(255,255,255,0.06); border-radius: 2px; margin-top: 3px; overflow: hidden; }
+.cb-bar-inner { height: 100%; border-radius: 2px; background: var(--gold); transition: width 0.6s ease; }
+
+/* ── Calendar event ─────────────────────────────────────────────── */
+.cal-item { display: flex; gap: 10px; align-items: flex-start; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.03); }
+.cal-item:last-child { border-bottom: none; }
+.cal-impact {
+    font-family: 'DM Mono', monospace; font-size: 9px; font-weight: 700;
+    text-transform: uppercase; padding: 2px 6px; border-radius: 3px; white-space: nowrap; margin-top: 1px;
+}
+.impact-critical { background: rgba(224,82,82,0.2); color: var(--red); }
+.impact-high     { background: rgba(232,148,58,0.2); color: #E8943A; }
+.impact-medium   { background: rgba(91,155,213,0.2); color: var(--blue); }
+
+/* ── Period buttons ─────────────────────────────────────────────── */
+.period-btn {
+    padding: 4px 11px; border-radius: 5px; font-size: 11px; font-weight: 600;
+    font-family: 'DM Mono', monospace;
+    background: rgba(255,255,255,0.05); color: var(--text-muted);
+    border: 1px solid var(--border-light); cursor: pointer; transition: all 0.2s;
+}
+.period-btn:hover  { background: rgba(255,255,255,0.1); color: var(--text-primary); }
+.period-btn.active { background: var(--gold); color: #0A0D10; border-color: var(--gold); }
+
+/* ── Squeeze pill ───────────────────────────────────────────────── */
+.squeeze-on  { background: rgba(255,200,0,0.15); color: #FFD700; border: 1px solid rgba(255,200,0,0.3); padding: 2px 8px; border-radius: 4px; font-size: 10px; font-family: 'DM Mono', monospace; }
+.squeeze-off { background: rgba(255,255,255,0.05); color: var(--text-muted); border: 1px solid var(--border-light); padding: 2px 8px; border-radius: 4px; font-size: 10px; font-family: 'DM Mono', monospace; }
+
+/* ── Smart money section divider ───────────────────────────────── */
+.sm-section { margin-bottom: 0.75rem; }
+.sm-section-lbl { font-size: 10px; font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid var(--border-light); }
+
+@media (max-width: 1300px) {
+    .trinity-strip { grid-template-columns: repeat(4, 1fr); }
+    .master-grid   { grid-template-columns: 1fr; }
+}
+@media (max-width: 800px) {
+    .trinity-strip { grid-template-columns: repeat(2, 1fr); }
+    .ind-grid      { grid-template-columns: repeat(2, 1fr); }
+    .local-grid    { grid-template-columns: repeat(2, 1fr); }
+}
+{% endblock %}
 
 {% block content %}
-<!-- Dashboard Header with Live Stats -->
-<div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
-    <!-- Current Price Card -->
-    <div class="glass-effect rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
-        <div class="flex items-center justify-between mb-3">
-            <div class="bg-yellow-500/20 p-3 rounded-lg">
-                <i class="fas fa-coins text-2xl text-yellow-500"></i>
-            </div>
-            <span class="text-xs text-gray-400">LIVE</span>
-        </div>
-        <p class="text-sm text-gray-400 mb-1">Current Gold Price</p>
-        <h3 id="dash-price" class="text-3xl font-bold text-yellow-500 mb-2">$4,263.40</h3>
-        <p id="dash-change" class="text-sm price-up">
-            <i class="fas fa-arrow-up mr-1"></i>+$42.90 (1.02%)
-        </p>
-    </div>
 
-    <!-- Recommendation Card -->
-    <div class="glass-effect rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
-        <div class="flex items-center justify-between mb-3">
-            <div class="bg-green-500/20 p-3 rounded-lg">
-                <i class="fas fa-signal text-2xl text-green-500"></i>
-            </div>
-            <span class="text-xs text-green-400">ACTIVE</span>
-        </div>
-        <p class="text-sm text-gray-400 mb-1">AI Recommendation</p>
-        <h3 id="dash-recommendation" class="text-3xl font-bold text-green-400 mb-2">BUY</h3>
-        <p class="text-sm text-gray-400">Medium Risk • Medium-term</p>
+<!-- ══════════════════════════════════════════════════════════════════
+     TRINITY ASSET STRIP
+══════════════════════════════════════════════════════════════════ -->
+<div class="trinity-strip">
+    <div class="asset-kpi gold">
+        <div class="kpi-label">Gold GC=F</div>
+        <div id="kpi-gold-price" class="kpi-price">—</div>
+        <div id="kpi-gold-chg"   class="kpi-change" style="color:var(--text-muted)">—</div>
     </div>
-
-    <!-- Target Price Card -->
-    <div class="glass-effect rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
-        <div class="flex items-center justify-between mb-3">
-            <div class="bg-blue-500/20 p-3 rounded-lg">
-                <i class="fas fa-bullseye text-2xl text-blue-500"></i>
-            </div>
-            <span class="text-xs text-blue-400">TARGET</span>
-        </div>
-        <p class="text-sm text-gray-400 mb-1">Price Target</p>
-        <h3 id="dash-target" class="text-3xl font-bold text-blue-400 mb-2">$4,380</h3>
-        <p class="text-sm text-gray-400">Potential: +2.74%</p>
+    <div class="asset-kpi silver">
+        <div class="kpi-label">Silver SI=F</div>
+        <div id="kpi-silver-price" class="kpi-price" style="color:#A8B2C1">—</div>
+        <div id="kpi-silver-chg"   class="kpi-change" style="color:var(--text-muted)">—</div>
     </div>
-
-    <!-- Position Size Card -->
-    <div class="glass-effect rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
-        <div class="flex items-center justify-between mb-3">
-            <div class="bg-purple-500/20 p-3 rounded-lg">
-                <i class="fas fa-chart-pie text-2xl text-purple-500"></i>
-            </div>
-            <span class="text-xs text-purple-400">ALLOCATION</span>
-        </div>
-        <p class="text-sm text-gray-400 mb-1">Position Size</p>
-        <h3 id="dash-position" class="text-3xl font-bold text-purple-400 mb-2">12%</h3>
-        <p class="text-sm text-gray-400">Of Portfolio</p>
+    <div class="asset-kpi oil">
+        <div class="kpi-label">WTI Crude CL=F</div>
+        <div id="kpi-wti-price" class="kpi-price" style="color:#E87A5D">—</div>
+        <div id="kpi-wti-chg"   class="kpi-change" style="color:var(--text-muted)">—</div>
+    </div>
+    <div class="asset-kpi dxy">
+        <div class="kpi-label">US Dollar DXY</div>
+        <div id="kpi-dxy-price" class="kpi-price" style="color:var(--blue)">—</div>
+        <div id="kpi-dxy-chg"   class="kpi-change" style="color:var(--text-muted)">—</div>
+    </div>
+    <div class="asset-kpi tnx">
+        <div class="kpi-label">10yr Yield TNX</div>
+        <div id="kpi-tnx-price" class="kpi-price" style="color:#9B6EE8">—</div>
+        <div id="kpi-tnx-chg"   class="kpi-change" style="color:var(--text-muted)">—</div>
+    </div>
+    <div class="asset-kpi plat">
+        <div class="kpi-label">Platinum PL=F</div>
+        <div id="kpi-plat-price" class="kpi-price" style="color:#7EC8C8">—</div>
+        <div id="kpi-plat-chg"   class="kpi-change" style="color:var(--text-muted)">—</div>
+    </div>
+    <div class="asset-kpi ratio">
+        <div class="kpi-label">Au/Ag Ratio</div>
+        <div id="kpi-ratio"     class="kpi-price" style="color:var(--purple)">—</div>
+        <div id="kpi-ratio-sub" class="kpi-change" style="color:var(--text-muted)">Hist. Mean: 65</div>
     </div>
 </div>
 
-<!-- Main Content Grid -->
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-    <!-- Left Column - Chart & Technical -->
-    <div class="lg:col-span-2 space-y-8">
-        <!-- Price Chart -->
-        <div class="glass-effect rounded-2xl p-6 shadow-xl">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold flex items-center">
-                    <i class="fas fa-chart-area mr-3 text-yellow-500"></i>
-                    Gold Price Analysis
-                </h2>
-                <div class="flex space-x-2">
-                    <button onclick="updateChartPeriod('1mo')" class="chart-period-btn px-4 py-2 text-sm rounded-lg bg-white/10 hover:bg-white/20 transition">1M</button>
-                    <button onclick="updateChartPeriod('3mo')" class="chart-period-btn px-4 py-2 text-sm rounded-lg bg-white/10 hover:bg-white/20 transition">3M</button>
-                    <button onclick="updateChartPeriod('6mo')" class="chart-period-btn active px-4 py-2 text-sm rounded-lg bg-yellow-500 text-gray-900 font-semibold">6M</button>
-                    <button onclick="updateChartPeriod('1y')" class="chart-period-btn px-4 py-2 text-sm rounded-lg bg-white/10 hover:bg-white/20 transition">1Y</button>
-                </div>
-            </div>
-            <div id="price-chart" class="h-96"></div>
-        </div>
+<!-- ══════════════════════════════════════════════════════════════════
+     MASTER GRID
+══════════════════════════════════════════════════════════════════ -->
+<div class="master-grid">
 
-        <!-- Technical Indicators -->
-        <div class="glass-effect rounded-2xl p-6 shadow-xl">
-            <h2 class="text-2xl font-bold mb-6 flex items-center">
-                <i class="fas fa-signal mr-3 text-blue-500"></i>
-                Technical Indicators
-            </h2>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div class="bg-white/5 rounded-lg p-4 border border-white/10">
-                    <p class="text-xs text-gray-400 mb-1">10-Day SMA</p>
-                    <p class="text-xl font-bold text-blue-400">$4,117</p>
-                    <p class="text-xs text-green-400 mt-1"><i class="fas fa-arrow-up"></i> Above 50-SMA</p>
-                </div>
-                <div class="bg-white/5 rounded-lg p-4 border border-white/10">
-                    <p class="text-xs text-gray-400 mb-1">50-Day SMA</p>
-                    <p class="text-xl font-bold text-orange-400">$3,995</p>
-                    <p class="text-xs text-gray-400 mt-1">Support Level</p>
-                </div>
-                <div class="bg-white/5 rounded-lg p-4 border border-white/10">
-                    <p class="text-xs text-gray-400 mb-1">RSI (14)</p>
-                    <p class="text-xl font-bold text-red-400">72.74</p>
-                    <p class="text-xs text-red-400 mt-1"><i class="fas fa-exclamation-triangle"></i> Overbought</p>
-                </div>
-                <div class="bg-white/5 rounded-lg p-4 border border-white/10">
-                    <p class="text-xs text-gray-400 mb-1">Momentum</p>
-                    <p class="text-xl font-bold text-green-400">Bullish</p>
-                    <p class="text-xs text-green-400 mt-1"><i class="fas fa-check"></i> Strong</p>
-                </div>
+<!-- ─── LEFT COLUMN ─────────────────────────────────────────────── -->
+<div class="left-col">
+
+    <!-- PRICE CHART -->
+    <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+            <div>
+                <div class="section-label">Price Chart</div>
+                <div class="section-title" style="font-size:0.95rem;">Gold — COMEX Futures (GC=F)</div>
+            </div>
+            <div style="display:flex;gap:4px;">
+                <button onclick="loadChart('1mo')"  class="period-btn" data-p="1mo">1M</button>
+                <button onclick="loadChart('3mo')"  class="period-btn" data-p="3mo">3M</button>
+                <button onclick="loadChart('6mo')"  class="period-btn active" data-p="6mo">6M</button>
+                <button onclick="loadChart('1y')"   class="period-btn" data-p="1y">1Y</button>
             </div>
         </div>
+        <div id="price-chart" style="height:340px;display:flex;align-items:center;justify-content:center;">
+            <div class="spinner"></div>
+        </div>
+        <div id="chart-meta" style="margin-top:6px;font-size:10px;color:var(--text-muted);font-family:'DM Mono',monospace;"></div>
+    </div>
 
-        <!-- News & Sentiment -->
-        <div class="glass-effect rounded-2xl p-6 shadow-xl">
-            <h2 class="text-2xl font-bold mb-6 flex items-center">
-                <i class="fas fa-newspaper mr-3 text-orange-500"></i>
-                Market Sentiment
-            </h2>
-            <div class="space-y-4">
-                <div class="bg-gradient-to-r from-green-900/30 to-green-800/20 border border-green-500/30 rounded-lg p-4">
-                    <div class="flex items-start">
-                        <div class="bg-green-500/20 p-2 rounded-lg mr-3">
-                            <i class="fas fa-arrow-trend-up text-green-400"></i>
-                        </div>
-                        <div class="flex-1">
-                            <h4 class="font-semibold text-green-400 mb-1">Bullish Sentiment</h4>
-                            <p class="text-sm text-gray-300">Gold breaks records as investors seek shelter from market turbulence</p>
-                            <div class="flex items-center mt-2">
-                                <span class="text-xs bg-green-500/20 text-green-300 px-2 py-1 rounded">Safe-Haven Demand</span>
-                                <span class="text-xs text-gray-500 ml-2">2 hours ago</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="bg-white/5 border border-white/10 rounded-lg p-4">
-                    <div class="flex items-start">
-                        <div class="bg-blue-500/20 p-2 rounded-lg mr-3">
-                            <i class="fas fa-university text-blue-400"></i>
-                        </div>
-                        <div class="flex-1">
-                            <h4 class="font-semibold text-gray-300 mb-1">Federal Reserve Watch</h4>
-                            <p class="text-sm text-gray-400">Monitoring interest rate decisions and policy statements</p>
-                            <div class="flex items-center mt-2">
-                                <span class="text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded">Monetary Policy</span>
-                                <span class="text-xs text-gray-500 ml-2">Updated daily</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+    <!-- SMART MONEY — INSTITUTIONAL POSITIONING -->
+    <div class="card card-gold">
+        <div class="t-head">
+            <span>Institutional Positioning — Smart Money</span>
+            <span id="sm-sweep-badge" class="badge" style="font-size:9px;">—</span>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;">
+            <!-- Liquidity Nodes -->
+            <div class="sm-section">
+                <div class="sm-section-lbl" style="color:var(--gold-light);">Liquidity Nodes</div>
+                <div class="dr"><span class="dl">90d Vol. POC</span>    <span id="sm-poc"    class="dv" style="color:var(--gold-light);">—</span></div>
+                <div class="dr"><span class="dl">Value Area High</span> <span id="sm-vah"    class="dv" style="color:var(--red);">—</span></div>
+                <div class="dr"><span class="dl">Value Area Low</span>  <span id="sm-val"    class="dv" style="color:var(--green);">—</span></div>
+                <div class="dr"><span class="dl">POC Relation</span>    <span id="sm-poc-rel" class="dv">—</span></div>
+            </div>
+            <!-- Execution Levels -->
+            <div class="sm-section">
+                <div class="sm-section-lbl" style="color:var(--blue);">Execution Levels</div>
+                <div class="dr"><span class="dl">Tight Stop (1x ATR)</span>  <span id="sm-tight"  class="dv" style="color:var(--red);">—</span></div>
+                <div class="dr"><span class="dl">Inst. Floor (2x ATR)</span> <span id="sm-floor"  class="dv" style="color:var(--red);">—</span></div>
+                <div class="dr"><span class="dl">Target (3x ATR)</span>      <span id="sm-target" class="dv" style="color:var(--green);">—</span></div>
+                <div class="dr"><span class="dl">Volatility Risk</span>      <span id="sm-vol-risk" class="dv">—</span></div>
+            </div>
+            <!-- ATR Metrics -->
+            <div class="sm-section">
+                <div class="sm-section-lbl" style="color:var(--purple);">Volatility Engine</div>
+                <div class="dr"><span class="dl">ATR (14d)</span>    <span id="sm-atr"     class="dv">—</span></div>
+                <div class="dr"><span class="dl">ATR %</span>        <span id="sm-atr-pct" class="dv">—</span></div>
+                <div class="dr"><span class="dl">Daily Swing Est.</span> <span id="sm-swing"  class="dv">—</span></div>
+                <div class="dr"><span class="dl">Squeeze Signal</span>  <span id="sm-squeeze" class="dv">—</span></div>
             </div>
         </div>
     </div>
 
-    <!-- Right Column - Recommendations & Details -->
-    <div class="space-y-8">
-        <!-- AI Recommendation Card -->
-        <div class="glass-effect rounded-2xl p-6 shadow-xl border-2 border-green-500/30">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="text-xl font-bold flex items-center">
-                    <i class="fas fa-robot mr-2 text-purple-400"></i>
-                    AI Analysis
-                </h2>
-                <span class="bg-green-500/20 text-green-400 text-xs px-3 py-1 rounded-full font-semibold">ACTIVE</span>
-            </div>
-            
-            <div class="mb-6">
-                <div class="flex items-center justify-center mb-3">
-                    <div class="bg-gradient-to-r from-green-500 to-emerald-500 text-white text-3xl font-bold px-8 py-4 rounded-xl shadow-lg">
-                        BUY
-                    </div>
-                </div>
-                <p class="text-center text-sm text-gray-400">Medium-term position (weeks)</p>
-            </div>
-
-            <div class="space-y-4">
-                <div class="bg-white/5 rounded-lg p-4">
-                    <div class="flex justify-between items-center mb-2">
-                        <span class="text-sm text-gray-400">Entry Price</span>
-                        <span class="text-lg font-bold text-green-400">$4,117.47</span>
-                    </div>
-                    <div class="w-full bg-gray-700 rounded-full h-2">
-                        <div class="bg-green-500 h-2 rounded-full" style="width: 75%"></div>
-                    </div>
-                    <p class="text-xs text-gray-500 mt-1">Wait for pullback to 10-day SMA</p>
-                </div>
-
-                <div class="bg-white/5 rounded-lg p-4">
-                    <div class="flex justify-between items-center mb-2">
-                        <span class="text-sm text-gray-400">Stop-Loss</span>
-                        <span class="text-lg font-bold text-red-400">$3,980.00</span>
-                    </div>
-                    <p class="text-xs text-gray-500">3.34% below entry</p>
-                </div>
-
-                <div class="bg-white/5 rounded-lg p-4">
-                    <div class="flex justify-between items-center mb-2">
-                        <span class="text-sm text-gray-400">Target Price</span>
-                        <span class="text-lg font-bold text-blue-400">$4,380.00</span>
-                    </div>
-                    <p class="text-xs text-gray-500">6.38% upside potential</p>
-                </div>
-            </div>
-
-            <div class="mt-6 pt-6 border-t border-white/10">
-                <div class="flex items-center justify-between mb-3">
-                    <span class="text-sm text-gray-400">Risk Level</span>
-                    <span class="bg-yellow-500/20 text-yellow-400 text-xs px-3 py-1 rounded-full font-semibold">MEDIUM</span>
-                </div>
-                <div class="flex items-center justify-between">
-                    <span class="text-sm text-gray-400">Position Size</span>
-                    <span class="text-lg font-bold text-purple-400">12%</span>
-                </div>
-            </div>
-
-            <button onclick="runNewAnalysis()" class="w-full mt-6 btn-primary px-6 py-3 rounded-lg shadow-lg">
-                <i class="fas fa-sync-alt mr-2"></i>Run New Analysis
-            </button>
+    <!-- FULL TECHNICAL INDICATOR SUITE -->
+    <div class="card">
+        <div class="t-head">
+            <span>Full Indicator Suite — Live</span>
+            <span id="trend-badge" class="badge badge-gold">Loading…</span>
         </div>
 
-        <!-- Risk Breakdown -->
-        <div class="glass-effect rounded-2xl p-6 shadow-xl">
-            <h3 class="text-xl font-bold mb-4 flex items-center">
-                <i class="fas fa-shield-alt mr-2 text-yellow-500"></i>
-                Risk Assessment
-            </h3>
-            
-            <div class="space-y-3">
-                <div>
-                    <div class="flex justify-between text-sm mb-1">
-                        <span class="text-gray-400">Technical Risk</span>
-                        <span class="text-yellow-400">High</span>
-                    </div>
-                    <div class="w-full bg-gray-700 rounded-full h-2">
-                        <div class="bg-yellow-500 h-2 rounded-full" style="width: 75%"></div>
-                    </div>
-                    <p class="text-xs text-gray-500 mt-1">RSI overbought - pullback likely</p>
-                </div>
-
-                <div>
-                    <div class="flex justify-between text-sm mb-1">
-                        <span class="text-gray-400">Fundamental Risk</span>
-                        <span class="text-green-400">Low</span>
-                    </div>
-                    <div class="w-full bg-gray-700 rounded-full h-2">
-                        <div class="bg-green-500 h-2 rounded-full" style="width: 25%"></div>
-                    </div>
-                    <p class="text-xs text-gray-500 mt-1">Strong safe-haven demand</p>
-                </div>
-
-                <div>
-                    <div class="flex justify-between text-sm mb-1">
-                        <span class="text-gray-400">Market Risk</span>
-                        <span class="text-orange-400">Medium</span>
-                    </div>
-                    <div class="w-full bg-gray-700 rounded-full h-2">
-                        <div class="bg-orange-500 h-2 rounded-full" style="width: 50%"></div>
-                    </div>
-                    <p class="text-xs text-gray-500 mt-1">General market turbulence</p>
-                </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:0.875rem;">
+            <!-- Trend / Momentum -->
+            <div>
+                <div style="font-size:10px;color:var(--blue);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Trend</div>
+                <div class="dr"><span class="dl">SMA 10</span>   <span id="ind-sma10"  class="dv" style="color:var(--blue);">—</span></div>
+                <div class="dr"><span class="dl">SMA 20</span>   <span id="ind-sma20"  class="dv">—</span></div>
+                <div class="dr"><span class="dl">SMA 50</span>   <span id="ind-sma50"  class="dv" style="color:var(--gold-light);">—</span></div>
+                <div class="dr"><span class="dl">SMA 100</span>  <span id="ind-sma100" class="dv">—</span></div>
+                <div class="dr"><span class="dl">SMA 200</span>  <span id="ind-sma200" class="dv" style="color:var(--text-secondary);">—</span></div>
+                <div class="dr"><span class="dl">EMA 21</span>   <span id="ind-ema21"  class="dv" style="color:var(--purple);">—</span></div>
+            </div>
+            <!-- Oscillators -->
+            <div>
+                <div style="font-size:10px;color:var(--purple);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Oscillators</div>
+                <div class="dr"><span class="dl">RSI (14)</span>       <span id="ind-rsi"         class="dv">—</span></div>
+                <div class="dr"><span class="dl">RSI Signal</span>     <span id="ind-rsi-sig"     class="dv">—</span></div>
+                <div class="dr"><span class="dl">Stoch RSI %K</span>   <span id="ind-stoch-k"     class="dv">—</span></div>
+                <div class="dr"><span class="dl">Stoch RSI %D</span>   <span id="ind-stoch-d"     class="dv">—</span></div>
+                <div class="dr"><span class="dl">MACD</span>           <span id="ind-macd"         class="dv">—</span></div>
+                <div class="dr"><span class="dl">MACD Signal</span>    <span id="ind-macd-sig"    class="dv">—</span></div>
+                <div class="dr"><span class="dl">MACD Hist.</span>     <span id="ind-macd-hist"   class="dv">—</span></div>
+                <div class="dr"><span class="dl">Divergence</span>     <span id="ind-divergence"  class="dv">—</span></div>
+            </div>
+            <!-- Bands & Levels -->
+            <div>
+                <div style="font-size:10px;color:var(--gold-light);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Bands & Levels</div>
+                <div class="dr"><span class="dl">BB Upper</span>      <span id="ind-bb-up"   class="dv" style="color:var(--red);">—</span></div>
+                <div class="dr"><span class="dl">BB Middle</span>     <span id="ind-bb-mid"  class="dv">—</span></div>
+                <div class="dr"><span class="dl">BB Lower</span>      <span id="ind-bb-lo"   class="dv" style="color:var(--green);">—</span></div>
+                <div class="dr"><span class="dl">BB Width %</span>    <span id="ind-bb-w"    class="dv">—</span></div>
+                <div class="dr"><span class="dl">BB %B</span>         <span id="ind-bb-pctb" class="dv">—</span></div>
+                <div class="dr"><span class="dl">ATR (14)</span>      <span id="ind-atr"     class="dv">—</span></div>
+                <div class="dr"><span class="dl">Resistance 60d</span><span id="ind-res"     class="dv" style="color:var(--red);">—</span></div>
+                <div class="dr"><span class="dl">Support 60d</span>   <span id="ind-sup"     class="dv" style="color:var(--green);">—</span></div>
             </div>
         </div>
 
-        <!-- Quick Actions -->
-        <div class="glass-effect rounded-2xl p-6 shadow-xl">
-            <h3 class="text-xl font-bold mb-4 flex items-center">
-                <i class="fas fa-bolt mr-2 text-yellow-500"></i>
-                Quick Actions
-            </h3>
-            
-            <div class="space-y-3">
-                <button onclick="window.location.href='/analysis'" class="w-full bg-white/10 hover:bg-white/20 rounded-lg p-3 text-left transition">
-                    <i class="fas fa-chart-line mr-2 text-blue-400"></i>
-                    <span class="font-semibold">View Full Analysis</span>
-                </button>
-                
-                <button onclick="downloadReport()" class="w-full bg-white/10 hover:bg-white/20 rounded-lg p-3 text-left transition">
-                    <i class="fas fa-download mr-2 text-green-400"></i>
-                    <span class="font-semibold">Download Report</span>
-                </button>
-                
-                <button onclick="setAlert()" class="w-full bg-white/10 hover:bg-white/20 rounded-lg p-3 text-left transition">
-                    <i class="fas fa-bell mr-2 text-yellow-400"></i>
-                    <span class="font-semibold">Set Price Alert</span>
-                </button>
-                
-                <button onclick="shareAnalysis()" class="w-full bg-white/10 hover:bg-white/20 rounded-lg p-3 text-left transition">
-                    <i class="fas fa-share-alt mr-2 text-purple-400"></i>
-                    <span class="font-semibold">Share Analysis</span>
-                </button>
+        <!-- Cross signals row -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.6rem;margin-top:0.5rem;padding-top:0.75rem;border-top:1px solid var(--border-light);">
+            <div class="ind-cell">
+                <div class="ind-lbl">Golden Cross</div>
+                <div id="ind-golden" class="ind-val">—</div>
+            </div>
+            <div class="ind-cell">
+                <div class="ind-lbl">OBV Trend</div>
+                <div id="ind-obv" class="ind-val">—</div>
+            </div>
+            <div class="ind-cell">
+                <div class="ind-lbl">Keltner Upper</div>
+                <div id="ind-kc-up" class="ind-val" style="color:var(--red);">—</div>
+            </div>
+            <div class="ind-cell">
+                <div class="ind-lbl">Keltner Lower</div>
+                <div id="ind-kc-lo" class="ind-val" style="color:var(--green);">—</div>
             </div>
         </div>
     </div>
-</div>
 
+    <!-- CORRELATION MATRIX -->
+    <div class="card">
+        <div class="t-head">
+            <span>Rolling Correlation Matrix — 60d</span>
+            <span class="badge badge-blue">Cross-Asset</span>
+        </div>
+        <div id="corr-container">
+            <div style="color:var(--text-muted);font-size:12px;">Loading…</div>
+        </div>
+        <div style="margin-top:0.75rem;font-size:11px;color:var(--text-muted);font-family:'DM Mono',monospace;">
+            +1.0 = perfect positive · 0 = no correlation · −1.0 = inverse. Gold vs DXY inverse = healthy.
+        </div>
+    </div>
+
+    <!-- LOCAL / MULTI-CURRENCY XAU -->
+    <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.25rem;">
+            <div>
+                <div class="section-label">Multi-Currency Gold Prices</div>
+                <div class="section-title" style="font-size:0.9rem;">XAU per troy oz — Live FX Cross</div>
+            </div>
+            <span class="badge badge-live">Real-Time</span>
+        </div>
+        <div class="local-grid" id="local-prices-grid">
+            <div style="color:var(--text-muted);font-size:12px;padding:0.5rem;">Loading…</div>
+        </div>
+    </div>
+
+</div><!-- /left-col -->
+
+<!-- ─── RIGHT COLUMN ─────────────────────────────────────────────── -->
+<div class="right-col">
+
+    <!-- AI SIGNAL / CIO MANDATE SHORTCUT -->
+    <div class="card card-gold">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.875rem;">
+            <div class="section-label" style="margin:0">CIO Mandate</div>
+            <span id="signal-badge" class="badge badge-gold">Awaiting Run</span>
+        </div>
+        <div style="text-align:center;padding:0.75rem 0;">
+            <div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;">Last Signal</div>
+            <div id="cio-signal" style="font-family:'Syne',sans-serif;font-weight:800;font-size:2rem;color:var(--gold-light);">RUN ANALYSIS</div>
+        </div>
+        <a href="/analysis" class="btn-primary" style="width:100%;justify-content:center;padding:10px;font-size:13px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            Initialize AI Terminal
+        </a>
+    </div>
+
+    <!-- MARKET REGIME SIGNALS -->
+    <div class="card">
+        <div class="t-head">
+            <span>Market Regime Detector</span>
+            <span id="regime-ts" style="font-size:10px;color:var(--text-muted);">—</span>
+        </div>
+        <div id="regime-container" style="display:flex;flex-direction:column;gap:8px;">
+            <div style="color:var(--text-muted);font-size:12px;">Loading…</div>
+        </div>
+        <div style="margin-top:0.875rem;">
+            <div class="t-head" style="margin-bottom:6px;">20d Asset Performance</div>
+            <div class="dr"><span class="dl">Gold Δ 20d</span>    <span id="reg-gold" class="dv">—</span></div>
+            <div class="dr"><span class="dl">WTI Crude Δ 20d</span><span id="reg-wti"  class="dv">—</span></div>
+            <div class="dr"><span class="dl">DXY Δ 20d</span>      <span id="reg-dxy"  class="dv">—</span></div>
+            <div class="dr"><span class="dl">10yr Yield Δ 20d</span><span id="reg-tnx" class="dv">—</span></div>
+        </div>
+    </div>
+
+    <!-- MACRO NEWS DESK & SENTIMENT -->
+    <div class="card">
+        <div class="t-head">
+            <span>Global News Desk</span>
+            <span id="macro-score-badge" class="badge">Score: —</span>
+        </div>
+
+        <div style="margin-bottom:0.875rem;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                <span style="font-size:10px;color:var(--red);font-family:'DM Mono',monospace;">BEARISH</span>
+                <span id="macro-overall" style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text-muted);">NEUTRAL</span>
+                <span style="font-size:10px;color:var(--green);font-family:'DM Mono',monospace;">BULLISH</span>
+            </div>
+            <div class="sent-track">
+                <div class="sent-bear" id="sent-bear-bar" style="width:50%"></div>
+                <div class="sent-bull" id="sent-bull-bar" style="width:50%"></div>
+            </div>
+            <div id="macro-meta" style="font-size:10px;color:var(--text-muted);font-family:'DM Mono',monospace;margin-top:4px;">—</div>
+        </div>
+
+        <div id="macro-headlines" style="max-height:280px;overflow-y:auto;padding-right:2px;">
+            <div style="color:var(--text-muted);font-size:12px;">Loading…</div>
+        </div>
+    </div>
+
+    <!-- SOVEREIGN RESERVE MATRIX -->
+    <div class="card">
+        <div class="t-head">
+            <span>Sovereign Reserve Floor (WGC)</span>
+            <span id="cb-accum-count" class="badge badge-gold">— accumulating</span>
+        </div>
+
+        <div id="cb-reserves" style="display:flex;flex-direction:column;gap:0;">
+            <div style="color:var(--text-muted);font-size:12px;">Loading…</div>
+        </div>
+
+        <div style="margin-top:0.875rem;padding-top:0.75rem;border-top:1px solid var(--border-light);">
+            <div class="t-head" style="margin-bottom:6px;">WGC Intelligence Feed</div>
+            <div id="wgc-feed" style="display:flex;flex-direction:column;gap:0;">
+                <div style="color:var(--text-muted);font-size:12px;">Loading…</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ECONOMIC CALENDAR -->
+    <div class="card">
+        <div class="t-head">
+            <span>Economic Calendar</span>
+            <span class="badge badge-blue">Upcoming</span>
+        </div>
+        <div id="econ-calendar">
+            <div style="color:var(--text-muted);font-size:12px;">Loading…</div>
+        </div>
+    </div>
+
+</div><!-- /right-col -->
+</div><!-- /master-grid -->
+
+<!-- ══════════════════════════════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════════════════════════════ -->
 <script>
-// Initialize chart with sample data
-function initChart() {
-    const dates = [];
-    const prices = [];
-    const sma10 = [];
-    const sma50 = [];
-    
-    // Generate sample data
-    for (let i = 180; i >= 0; i--) {
-        const date = new Date();
-        date.setDate(date.getDate() - i);
-        dates.push(date.toISOString().split('T')[0]);
-        
-        const basePrice = 3800 + Math.random() * 400;
-        prices.push(basePrice);
-        sma10.push(basePrice * 0.98);
-        sma50.push(basePrice * 0.96);
-    }
-    
-    const trace1 = {
-        x: dates,
-        y: prices,
-        type: 'scatter',
-        mode: 'lines',
-        name: 'Gold Price',
-        line: { color: '#eab308', width: 2 }
-    };
-    
-    const trace2 = {
-        x: dates,
-        y: sma10,
-        type: 'scatter',
-        mode: 'lines',
-        name: '10-Day SMA',
-        line: { color: '#3b82f6', width: 1.5 }
-    };
-    
-    const trace3 = {
-        x: dates,
-        y: sma50,
-        type: 'scatter',
-        mode: 'lines',
-        name: '50-Day SMA',
-        line: { color: '#f59e0b', width: 1.5 }
-    };
-    
-    const layout = {
-        plot_bgcolor: 'rgba(0,0,0,0)',
-        paper_bgcolor: 'rgba(0,0,0,0)',
-        font: { color: '#e5e7eb' },
-        xaxis: { 
-            gridcolor: 'rgba(255,255,255,0.1)',
-            showgrid: true
-        },
-        yaxis: { 
-            gridcolor: 'rgba(255,255,255,0.1)',
-            showgrid: true,
-            title: 'Price (USD)'
-        },
-        margin: { t: 20, r: 20, b: 40, l: 60 },
-        legend: {
-            orientation: 'h',
-            y: 1.1
-        },
-        hovermode: 'x unified'
-    };
-    
-    Plotly.newPlot('price-chart', [trace1, trace2, trace3], layout, {responsive: true});
-}
 
-function updateChartPeriod(period) {
-    // Update button states
-    document.querySelectorAll('.chart-period-btn').forEach(btn => {
-        btn.classList.remove('active', 'bg-yellow-500', 'text-gray-900', 'font-semibold');
-        btn.classList.add('bg-white/10');
-    });
-    event.target.classList.add('active', 'bg-yellow-500', 'text-gray-900', 'font-semibold');
-    event.target.classList.remove('bg-white/10');
-    
-    // Fetch new data (implement API call)
-    console.log('Updating chart for period:', period);
-}
+const fmt2   = n => typeof n === 'number' ? n.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) : '—';
+const fmt4   = n => typeof n === 'number' ? n.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:4}) : '—';
+const fmtPct = n => typeof n === 'number' ? (n >= 0 ? '+' : '') + n.toFixed(2) + '%' : '—';
+const colPct = n => n >= 0 ? 'var(--green)' : 'var(--red)';
+const colDir = n => n >= 0 ? 'var(--green)' : 'var(--red)';
 
-function runNewAnalysis() {
-    if (confirm('Run a new AI analysis? This will take 1-2 minutes.')) {
-        window.location.href = '/analysis';
-    }
-}
+let currentPeriod = '6mo';
 
-function downloadReport() {
-    alert('Downloading latest analysis report...');
-}
+// ── Market Data (Trinity + extras) ──────────────────────────────────
+async function updateMarketData() {
+    try {
+        const r = await fetch('/api/market-data');
+        const d = await r.json();
+        if (!d.success) return;
+        const md = d.data;
 
-function setAlert() {
-    const price = prompt('Enter price alert level:');
-    if (price) {
-        alert(`Price alert set for $${price}`);
-    }
-}
-
-function shareAnalysis() {
-    alert('Share functionality coming soon!');
-}
-
-// Auto-refresh price
-setInterval(() => {
-    fetch('/api/gold-price')
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                document.getElementById('dash-price').textContent = '$' + data.price.toFixed(2);
-                const changeEl = document.getElementById('dash-change');
-                const sign = data.change >= 0 ? '+' : '';
-                changeEl.innerHTML = `<i class="fas fa-arrow-${data.change >= 0 ? 'up' : 'down'} mr-1"></i>${sign}$${Math.abs(data.change).toFixed(2)} (${Math.abs(data.change_pct).toFixed(2)}%)`;
-                changeEl.className = data.change >= 0 ? 'text-sm price-up' : 'text-sm price-down';
+        const assets = [
+            { id: 'gold',   key: 'Gold',     prefix: '$' },
+            { id: 'silver', key: 'Silver',   prefix: '$' },
+            { id: 'wti',    key: 'WTI',      prefix: '$' },
+            { id: 'dxy',    key: 'DXY',      prefix: '' },
+            { id: 'tnx',    key: 'TNX',      prefix: '',  suffix: '%' },
+            { id: 'plat',   key: 'Platinum', prefix: '$' },
+        ];
+        assets.forEach(a => {
+            const asset = md[a.key];
+            if (!asset) return;
+            const priceEl = document.getElementById(`kpi-${a.id}-price`);
+            const chgEl   = document.getElementById(`kpi-${a.id}-chg`);
+            if (priceEl) priceEl.textContent = (a.prefix || '') + fmt2(asset.price) + (a.suffix || '');
+            if (chgEl)   {
+                chgEl.textContent = fmtPct(asset.change_pct);
+                chgEl.style.color = colPct(asset.change_pct);
             }
         });
-}, 30000);
 
-// Initialize on load
-initChart();
+        if (md.GoldSilverRatio) {
+            document.getElementById('kpi-ratio').textContent = md.GoldSilverRatio.toFixed(2);
+            const r = md.GoldSilverRatio;
+            const ratioEl = document.getElementById('kpi-ratio-sub');
+            ratioEl.textContent = r > 80 ? 'HIGH — Silver undervalued' : r < 60 ? 'LOW — Silver overvalued' : 'NEUTRAL';
+            ratioEl.style.color = r > 80 ? 'var(--red)' : r < 60 ? 'var(--green)' : 'var(--text-muted)';
+        }
+    } catch(e) { console.warn('Market data error:', e); }
+}
+
+// ── Chart ────────────────────────────────────────────────────────────
+async function loadChart(period) {
+    currentPeriod = period;
+    document.querySelectorAll('.period-btn').forEach(b => b.classList.toggle('active', b.dataset.p === period));
+    document.getElementById('price-chart').innerHTML =
+        '<div class="spinner" style="margin:140px auto 0;"></div>';
+    try {
+        const r = await fetch('/api/chart-data?period=' + period);
+        const d = await r.json();
+        if (d.success && d.chart) {
+            const fig = JSON.parse(d.chart);
+
+            // ── Presentation-only overrides — NEVER touch range or axis type ──
+            // The server sets autorange:false with pinned x/y ranges and baked-in
+            // rangebreaks. Overriding xaxis here was the cause of the bottom-left
+            // cramping bug. Only override cosmetics.
+            fig.layout.font          = { family: 'DM Mono, monospace', color: '#8FA3B4', size: 11 };
+            fig.layout.plot_bgcolor  = 'transparent';
+            fig.layout.paper_bgcolor = 'transparent';
+            // Preserve the server-side xaxis/yaxis config entirely — do not spread/overwrite
+
+            const el = document.getElementById('price-chart');
+            el.innerHTML = '';
+            Plotly.newPlot(el, fig.data, fig.layout, {
+                responsive:     true,
+                displayModeBar: false,
+                scrollZoom:     false,
+            });
+            document.getElementById('chart-meta').textContent =
+                `${d.symbol}  ·  ${d.points} trading days  ·  BB20 + SMA10/SMA50 + EMA21 overlaid`;
+        } else {
+            document.getElementById('price-chart').innerHTML =
+                '<div style="color:var(--text-muted);font-size:12px;font-family:\'DM Mono\',monospace;padding:2rem;">Chart data unavailable</div>';
+        }
+    } catch(e) {
+        console.error('Chart error:', e);
+        document.getElementById('price-chart').innerHTML =
+            '<div style="color:var(--red);font-size:12px;font-family:\'DM Mono\',monospace;padding:2rem;">Chart failed: ' + e.message + '</div>';
+    }
+}
+
+// ── Smart Money ──────────────────────────────────────────────────────
+async function updateSmartMoney() {
+    try {
+        const r = await fetch('/api/smart-money');
+        const d = await r.json();
+        if (!d.success) return;
+
+        document.getElementById('sm-poc').textContent    = '$' + fmt2(d.poc);
+        document.getElementById('sm-vah').textContent    = '$' + fmt2(d.vah);
+        document.getElementById('sm-val').textContent    = '$' + fmt2(d.val);
+        document.getElementById('sm-tight').textContent  = '$' + fmt2(d.tight_stop);
+        document.getElementById('sm-floor').textContent  = '$' + fmt2(d.floor);
+        document.getElementById('sm-target').textContent = '$' + fmt2(d.target);
+        document.getElementById('sm-atr').textContent    = '$' + fmt2(d.atr);
+        document.getElementById('sm-atr-pct').textContent = d.atr_pct?.toFixed(2) + '%';
+        document.getElementById('sm-swing').textContent  = '±$' + fmt2(d.atr);
+
+        const pocRel = document.getElementById('sm-poc-rel');
+        pocRel.textContent = d.poc_relation;
+        pocRel.style.color = d.poc_relation === 'ABOVE' ? 'var(--green)' : 'var(--red)';
+
+        const volRisk = document.getElementById('sm-vol-risk');
+        volRisk.textContent = d.vol_risk;
+        volRisk.style.color = d.vol_risk === 'HIGH' ? 'var(--red)' : d.vol_risk === 'MODERATE' ? '#E8943A' : 'var(--green)';
+
+        // Sweep badge
+        const swBadge = document.getElementById('sm-sweep-badge');
+        const sweep = d.liquidity_sweep;
+        swBadge.textContent = sweep === 'BULLISH_SWEEP' ? '🟢 BULLISH SWEEP' :
+                              sweep === 'BEARISH_SWEEP' ? '🔴 BEARISH SWEEP' : 'No Sweep';
+        swBadge.className = sweep === 'BULLISH_SWEEP' ? 'badge' :
+                            sweep === 'BEARISH_SWEEP' ? 'badge' : 'badge';
+        swBadge.style.color = sweep === 'BULLISH_SWEEP' ? 'var(--green)' :
+                              sweep === 'BEARISH_SWEEP' ? 'var(--red)' : 'var(--text-muted)';
+    } catch(e) { console.warn('Smart money error:', e); }
+}
+
+// ── Technical Indicators ─────────────────────────────────────────────
+async function updateTechnicals() {
+    try {
+        const r  = await fetch('/api/technical-indicators');
+        const d  = await r.json();
+        if (!d.success) return;
+        const i  = d.indicators;
+        const $  = id => document.getElementById(id);
+
+        const fmtP = v => v != null ? '$' + v.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) : '—';
+
+        $('ind-sma10').textContent  = fmtP(i.sma_10);
+        $('ind-sma20').textContent  = fmtP(i.sma_20);
+        $('ind-sma50').textContent  = fmtP(i.sma_50);
+        $('ind-sma100').textContent = fmtP(i.sma_100);
+        $('ind-sma200').textContent = fmtP(i.sma_200);
+        $('ind-ema21').textContent  = fmtP(i.ema_21);
+
+        const rsiEl = $('ind-rsi');
+        rsiEl.textContent = i.rsi?.toFixed(1) ?? '—';
+        rsiEl.style.color = i.rsi > 70 ? 'var(--red)' : i.rsi < 30 ? 'var(--green)' : 'var(--text-primary)';
+
+        const rsiSig = $('ind-rsi-sig');
+        rsiSig.textContent = i.rsi_signal || '—';
+        rsiSig.style.color = i.rsi_signal === 'OVERBOUGHT' ? 'var(--red)' : i.rsi_signal === 'OVERSOLD' ? 'var(--green)' : 'var(--text-muted)';
+
+        $('ind-stoch-k').textContent = i.stoch_rsi_k?.toFixed(1) ?? '—';
+        $('ind-stoch-d').textContent = i.stoch_rsi_d?.toFixed(1) ?? '—';
+
+        const macdEl = $('ind-macd');
+        macdEl.textContent = i.macd?.toFixed(2) ?? '—';
+        macdEl.style.color = i.macd_bullish ? 'var(--green)' : 'var(--red)';
+
+        $('ind-macd-sig').textContent  = i.macd_signal?.toFixed(2) ?? '—';
+        const histEl = $('ind-macd-hist');
+        histEl.textContent = i.macd_hist?.toFixed(2) ?? '—';
+        histEl.style.color = (i.macd_hist ?? 0) >= 0 ? 'var(--green)' : 'var(--red)';
+
+        const divEl = $('ind-divergence');
+        divEl.textContent = i.divergence || '—';
+        divEl.style.color = i.divergence === 'BULLISH' ? 'var(--green)' :
+                            i.divergence === 'BEARISH' ? 'var(--red)' : 'var(--text-muted)';
+
+        $('ind-bb-up').textContent    = fmtP(i.bb_upper);
+        $('ind-bb-mid').textContent   = fmtP(i.bb_middle);
+        $('ind-bb-lo').textContent    = fmtP(i.bb_lower);
+        $('ind-bb-w').textContent     = i.bb_width != null ? i.bb_width.toFixed(2) + '%' : '—';
+        $('ind-bb-pctb').textContent  = i.bb_pct_b  != null ? i.bb_pct_b.toFixed(1) + '%' : '—';
+        $('ind-atr').textContent      = i.atr ? '$' + i.atr.toFixed(2) : '—';
+        $('ind-res').textContent      = fmtP(i.resistance_60d);
+        $('ind-sup').textContent      = fmtP(i.support_60d);
+
+        const goldenEl = $('ind-golden');
+        goldenEl.textContent = i.golden_cross ? '✅ Golden Cross' : '❌ Death Cross';
+        goldenEl.style.color = i.golden_cross ? 'var(--green)' : 'var(--red)';
+
+        const obvEl = $('ind-obv');
+        obvEl.textContent = i.obv_trend || '—';
+        obvEl.style.color = i.obv_trend === 'UP' ? 'var(--green)' : 'var(--red)';
+
+        $('ind-kc-up').textContent = fmtP(i.kc_upper);
+        $('ind-kc-lo').textContent = fmtP(i.kc_lower);
+
+        const trendBadge = $('trend-badge');
+        const t = i.trend || 'NEUTRAL';
+        trendBadge.textContent = t.replace('_', ' ');
+        trendBadge.style.background = t.includes('STRONG_UP') ? 'rgba(61,186,122,0.2)' :
+                                      t.includes('UP') ? 'rgba(61,186,122,0.12)' :
+                                      t.includes('STRONG_DOWN') ? 'rgba(224,82,82,0.2)' :
+                                      t.includes('DOWN') ? 'rgba(224,82,82,0.12)' : '';
+        trendBadge.style.color = t.includes('UP') ? 'var(--green)' :
+                                 t.includes('DOWN') ? 'var(--red)' : 'var(--text-muted)';
+        trendBadge.style.border = '1px solid ' + (t.includes('UP') ? 'rgba(61,186,122,0.3)' :
+                                                   t.includes('DOWN') ? 'rgba(224,82,82,0.3)' : 'var(--border-light)');
+
+        // Squeeze (from smart money endpoint already loaded)
+        const smSqueeze = document.getElementById('sm-squeeze');
+        if (i.squeeze_active != null) {
+            smSqueeze.innerHTML = i.squeeze_active ?
+                '<span class="squeeze-on">⚡ ACTIVE</span>' :
+                '<span class="squeeze-off">Inactive</span>';
+        }
+    } catch(e) { console.warn('Technicals error:', e); }
+}
+
+// ── Correlation Matrix ───────────────────────────────────────────────
+async function updateCorrelation() {
+    try {
+        const r = await fetch('/api/correlation-matrix');
+        const d = await r.json();
+        if (!d.success) return;
+
+        const assets = d.assets;
+        const mx     = d.matrix;
+
+        const colorCell = v => {
+            const abs = Math.abs(v);
+            if (abs > 0.7)  return v > 0 ? 'rgba(61,186,122,0.25)' : 'rgba(224,82,82,0.25)';
+            if (abs > 0.4)  return v > 0 ? 'rgba(61,186,122,0.12)' : 'rgba(224,82,82,0.12)';
+            return 'rgba(255,255,255,0.04)';
+        };
+        const colorVal = v => {
+            const abs = Math.abs(v);
+            if (abs > 0.7)  return v > 0 ? 'var(--green)' : 'var(--red)';
+            if (abs > 0.4)  return v > 0 ? '#7ed5a8' : '#e88888';
+            return 'var(--text-muted)';
+        };
+
+        let html = `<table class="corr-table"><thead><tr><th></th>`;
+        assets.forEach(a => { html += `<th>${a}</th>`; });
+        html += `</tr></thead><tbody>`;
+        assets.forEach(row => {
+            html += `<tr><th style="text-align:left;color:var(--text-secondary);">${row}</th>`;
+            assets.forEach(col => {
+                const v = mx[row]?.[col] ?? 0;
+                const diag = row === col;
+                html += `<td style="background:${diag ? 'rgba(201,168,76,0.1)' : colorCell(v)};color:${diag ? 'var(--gold-light)' : colorVal(v)};">${v.toFixed(2)}</td>`;
+            });
+            html += `</tr>`;
+        });
+        html += `</tbody></table>`;
+        document.getElementById('corr-container').innerHTML = html;
+    } catch(e) { console.warn('Correlation error:', e); }
+}
+
+// ── Market Regime ─────────────────────────────────────────────────────
+async function updateRegime() {
+    try {
+        const r = await fetch('/api/regime-signals');
+        const d = await r.json();
+        if (!d.success) return;
+
+        const colorMap = { red: 'regime-red', gold: 'regime-gold', orange: 'regime-orange', green: 'regime-green', gray: 'regime-gray' };
+        document.getElementById('regime-container').innerHTML = d.regime.map(s =>
+            `<div>
+                <span class="regime-badge ${colorMap[s.color] || 'regime-gray'}">${s.regime}</span>
+                <div style="font-size:11px;color:var(--text-secondary);margin-top:4px;line-height:1.4;">${s.desc}</div>
+             </div>`
+        ).join('');
+
+        const fmtChg = v => {
+            const el = document.createElement('span');
+            el.textContent = (v >= 0 ? '+' : '') + v.toFixed(2) + '%';
+            el.style.color = v >= 0 ? 'var(--green)' : 'var(--red)';
+            return el.outerHTML;
+        };
+        const c = d.changes;
+        document.getElementById('reg-gold').innerHTML = fmtChg(c.gold);
+        document.getElementById('reg-wti').innerHTML  = fmtChg(c.wti);
+        document.getElementById('reg-dxy').innerHTML  = fmtChg(c.dxy);
+        document.getElementById('reg-tnx').innerHTML  = fmtChg(c.tnx);
+        document.getElementById('regime-ts').textContent = d.window;
+    } catch(e) { console.warn('Regime error:', e); }
+}
+
+// ── Macro News ────────────────────────────────────────────────────────
+async function updateMacroNews() {
+    try {
+        const r = await fetch('/api/macro-news');
+        const d = await r.json();
+        if (!d.success) return;
+
+        document.getElementById('macro-score-badge').textContent = `Score: ${d.score > 0 ? '+' : ''}${d.score}`;
+        document.getElementById('macro-overall').textContent = d.overall;
+        document.getElementById('macro-overall').style.color =
+            d.overall.includes('BULL') ? 'var(--green)' :
+            d.overall.includes('BEAR') ? 'var(--red)' : 'var(--text-muted)';
+
+        const bearPct = Math.max(5, Math.min(90, 50 - (d.score * 8)));
+        const bullPct = 100 - bearPct;
+        document.getElementById('sent-bear-bar').style.width = bearPct + '%';
+        document.getElementById('sent-bull-bar').style.width = bullPct + '%';
+        document.getElementById('macro-meta').textContent =
+            `${d.raw_count} raw headlines · ${d.relevant_count} relevant · sorted by impact weight`;
+
+        document.getElementById('macro-headlines').innerHTML = d.headlines.length
+            ? d.headlines.map(h => {
+                const cls = h.sentiment?.includes('BULL') ? 'headline-bull' :
+                            h.sentiment?.includes('BEAR') ? 'headline-bear' : 'headline-neut';
+                const sentColor = h.sentiment?.includes('BULL') ? 'var(--green)' :
+                                  h.sentiment?.includes('BEAR') ? 'var(--red)' : 'var(--text-muted)';
+                return `<div class="headline-item ${cls}">
+                    <div style="font-size:12px;color:var(--text-primary);margin-bottom:3px;">${h.title}</div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <span style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text-muted);">[${h.source}]</span>
+                        <span style="font-size:10px;font-family:'DM Mono',monospace;font-weight:700;color:${sentColor};">${h.sentiment} (${h.score > 0 ? '+' : ''}${h.score})</span>
+                    </div>
+                    ${h.bull_hits?.length ? `<div style="font-size:10px;color:var(--green);margin-top:2px;">🟢 ${h.bull_hits.join(', ')}</div>` : ''}
+                    ${h.bear_hits?.length ? `<div style="font-size:10px;color:var(--red);">🔴 ${h.bear_hits.join(', ')}</div>` : ''}
+                </div>`;
+            }).join('')
+            : '<div style="color:var(--text-muted);font-size:12px;padding:0.5rem;">No relevant headlines from live feeds. Feeds may be rate-limiting — sovereign reserve data is still valid.</div>';
+    } catch(e) { console.warn('Macro news error:', e); }
+}
+
+// ── Central Banks ─────────────────────────────────────────────────────
+async function updateCentralBanks() {
+    try {
+        const r = await fetch('/api/central-banks');
+        const d = await r.json();
+        if (!d.success) return;
+
+        document.getElementById('cb-accum-count').textContent = `${d.accumulating_count} accumulating`;
+        const maxTonnes = Math.max(...d.major_holders.map(h => h.tonnes));
+
+        document.getElementById('cb-reserves').innerHTML = d.major_holders.map(h => {
+            const pct  = (h.tonnes / maxTonnes * 100).toFixed(1);
+            const isAccum = h.status.includes('Buying') || h.status.includes('Accumulation');
+            const statusColor = isAccum ? 'var(--green)' : 'var(--text-muted)';
+            const yoyColor = h.yoy.startsWith('+') ? 'var(--green)' : h.yoy === '0.0%' ? 'var(--text-muted)' : 'var(--red)';
+            return `<div style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.03);">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px;">
+                    <span style="font-size:12px;font-weight:500;">${h.flag} ${h.country}</span>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--gold-light);">${h.tonnes.toLocaleString()}t</span>
+                        <span style="font-family:'DM Mono',monospace;font-size:10px;color:${yoyColor};">${h.yoy}</span>
+                    </div>
+                </div>
+                <div class="cb-bar-outer"><div class="cb-bar-inner" style="width:${pct}%;background:${isAccum ? 'var(--green)' : 'var(--gold)'};"></div></div>
+                <div style="font-size:10px;color:${statusColor};font-family:'DM Mono',monospace;margin-top:2px;">${h.status} · ${h.pct_reserves}% of reserves</div>
+            </div>`;
+        }).join('');
+
+        document.getElementById('wgc-feed').innerHTML = d.wgc_news.length
+            ? d.wgc_news.map(a =>
+                `<div style="padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.03);">
+                    <a href="${a.link}" target="_blank" rel="noopener" style="color:var(--text-primary);text-decoration:none;font-size:12px;font-weight:500;">${a.title}</a>
+                    ${a.published ? `<div style="font-size:10px;color:var(--text-muted);margin-top:2px;font-family:'DM Mono',monospace;">${a.published}</div>` : ''}
+                </div>`
+            ).join('')
+            : '<div style="font-size:11px;color:var(--text-muted);">WGC feed unavailable. Check gold.org/goldhub for latest research.</div>';
+    } catch(e) { console.warn('CB error:', e); }
+}
+
+// ── Economic Calendar ─────────────────────────────────────────────────
+async function updateCalendar() {
+    try {
+        const r = await fetch('/api/economic-calendar');
+        const d = await r.json();
+        if (!d.success) return;
+
+        document.getElementById('econ-calendar').innerHTML = d.events.map(ev => {
+            const cls = ev.impact === 'CRITICAL' ? 'impact-critical' :
+                        ev.impact === 'HIGH'     ? 'impact-high'     : 'impact-medium';
+            return `<div class="cal-item">
+                <span class="cal-impact ${cls}">${ev.impact}</span>
+                <div>
+                    <div style="font-size:12px;font-weight:500;color:var(--text-primary);">${ev.event}</div>
+                    <div style="font-size:10px;color:var(--text-muted);font-family:'DM Mono',monospace;margin-top:1px;">${ev.date}</div>
+                    <div style="font-size:10px;color:var(--text-secondary);margin-top:2px;">${ev.gold_bias}</div>
+                </div>
+            </div>`;
+        }).join('');
+    } catch(e) { console.warn('Calendar error:', e); }
+}
+
+// ── Local Prices ──────────────────────────────────────────────────────
+async function updateLocalPrices() {
+    try {
+        const r = await fetch('/api/local-prices');
+        const d = await r.json();
+        if (!d.success) return;
+
+        document.getElementById('local-prices-grid').innerHTML = Object.entries(d.prices).map(([cur, info]) => {
+            const dp = cur === 'JPY' ? 0 : cur === 'INR' ? 0 : 2;
+            const priceFmt = info.price.toLocaleString(undefined, { minimumFractionDigits: dp, maximumFractionDigits: dp });
+            return `<div class="local-cell">
+                <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:2px;">${cur}/oz</div>
+                <div class="mono" style="font-size:0.9rem;font-weight:600;color:var(--text-primary);">${info.symbol}${priceFmt}</div>
+            </div>`;
+        }).join('');
+    } catch(e) { console.warn('Local prices error:', e); }
+}
+
+// ── Bootstrap ─────────────────────────────────────────────────────────
+function initDashboard() {
+    // Bust chart caches so any server-side chart code changes take effect
+    fetch('/api/clear-cache', { method: 'POST' }).finally(() => {
+        loadChart(currentPeriod);
+    });
+    updateMarketData();
+    updateTechnicals();
+    updateSmartMoney();
+    updateCorrelation();
+    updateRegime();
+    updateMacroNews();
+    updateCentralBanks();
+    updateCalendar();
+    updateLocalPrices();
+
+    // Refresh intervals
+    setInterval(updateMarketData,   30_000);
+    setInterval(updateTechnicals,   60_000);
+    setInterval(updateSmartMoney,   60_000);
+    setInterval(updateMacroNews,   120_000);
+    setInterval(updateLocalPrices, 120_000);
+    setInterval(updateRegime,      300_000);
+    setInterval(updateCorrelation, 600_000);
+}
+
+initDashboard();
 </script>
 {% endblock %}

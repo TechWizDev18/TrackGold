@@ -1,75 +1,231 @@
 {% extends "base.html" %}
+{% block title %}AI Analysis — GoldTracker{% endblock %}
+
+{% block extra_css %}
+.analysis-content h1, .analysis-content h2, .analysis-content h3 {
+    font-family: 'Syne', sans-serif; font-weight: 700;
+    color: var(--gold-light); margin: 1.5rem 0 0.5rem;
+}
+.analysis-content h1 { font-size: 1.5rem; }
+.analysis-content h2 { font-size: 1.2rem; }
+.analysis-content h3 { font-size: 1.05rem; color: var(--text-primary); }
+.analysis-content p { color: var(--text-secondary); line-height: 1.7; margin-bottom: 0.875rem; }
+.analysis-content ul, .analysis-content ol { padding-left: 1.25rem; margin-bottom: 0.875rem; }
+.analysis-content li { color: var(--text-secondary); line-height: 1.7; margin-bottom: 0.3rem; }
+.analysis-content strong { color: var(--text-primary); font-weight: 600; }
+.analysis-content hr { border: none; border-top: 1px solid var(--border-light); margin: 1.5rem 0; }
+.analysis-content code { background: rgba(255,255,255,0.06); border-radius: 4px; padding: 2px 6px; font-family: 'DM Mono', monospace; font-size: 12px; color: var(--gold-light); }
+.rec-box {
+    background: linear-gradient(135deg, rgba(61,186,122,0.08), rgba(61,186,122,0.03));
+    border-left: 3px solid var(--green); border-radius: 0 8px 8px 0;
+    padding: 1rem 1.25rem; margin: 1rem 0;
+}
+.warn-box {
+    background: linear-gradient(135deg, rgba(224,82,82,0.08), rgba(224,82,82,0.03));
+    border-left: 3px solid var(--red); border-radius: 0 8px 8px 0;
+    padding: 1rem 1.25rem; margin: 1rem 0;
+}
+{% endblock %}
 
 {% block content %}
-<div class="glass-effect rounded-2xl p-8 max-w-4xl mx-auto">
-    <h1 class="text-3xl font-bold mb-6">
-        <i class="fas fa-brain mr-3 text-purple-400"></i>
-        AI Analysis
-    </h1>
-    
-    <div id="progress-section">
-        <div class="mb-4">
-            <p id="status-message" class="text-gray-300 mb-2">Starting analysis...</p>
-            <div class="w-full bg-gray-700 rounded-full h-3">
-                <div id="progress-bar" class="gold-gradient h-3 rounded-full transition-all" style="width: 0%"></div>
+
+<div style="display:grid;grid-template-columns:1fr 320px;gap:1.5rem;">
+
+    <!-- Left: Analysis Panel -->
+    <div style="display:flex;flex-direction:column;gap:1.5rem;">
+
+        <!-- Header + Run -->
+        <div class="card card-gold">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
+                <div>
+                    <div class="section-label">AI Agent System</div>
+                    <h1 style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.6rem;margin:0 0 0.5rem;color:var(--text-primary);">Institutional Mandate Generation</h1>
+                    <p style="color:var(--text-muted);font-size:13px;margin:0;">Multi-Asset Data, Liquidity Nodes, and Macro News synthesized by the CIO Hub.</p>
+                </div>
+                <button id="runBtn" onclick="startAnalysis()" class="btn-primary" style="white-space:nowrap;padding:12px 24px;font-size:14px;">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                    Run Analysis
+                </button>
             </div>
         </div>
-        <div class="flex justify-center mt-6">
-            <div class="spinner"></div>
+
+        <!-- Progress -->
+        <div id="progressCard" class="card" style="display:none;">
+            <div class="section-label" style="margin-bottom:0.5rem;">Analysis Progress</div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+                <span id="progressMsg" style="font-size:13px;color:var(--text-secondary);">Starting...</span>
+                <span id="progressPct" class="mono" style="font-size:13px;color:var(--gold-light);">0%</span>
+            </div>
+            <div class="gauge-bar" style="height:6px;">
+                <div id="progressFill" class="gauge-fill" style="background:var(--gold);width:0%;transition:width 0.5s ease;"></div>
+            </div>
+            <div style="margin-top:0.75rem;font-size:11px;color:var(--text-muted);font-family:'DM Mono',monospace;">The Hub-and-Spoke model is polling live endpoints. This takes 1–3 minutes.</div>
         </div>
+
+        <!-- Results -->
+        <div id="resultsCard" class="card" style="display:none;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+                <div>
+                    <div class="section-label">Analysis Report</div>
+                    <div class="section-title" style="font-size:0.95rem;">AI Synthesis — Live Priced</div>
+                </div>
+                <button onclick="downloadReport()" class="btn-secondary" style="font-size:12px;padding:7px 14px;">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Download
+                </button>
+            </div>
+            <div class="divider" style="margin-top:0;"></div>
+            <div id="analysisContent" class="analysis-content"></div>
+        </div>
+
+        <!-- Error -->
+        <div id="errorCard" class="card" style="display:none;border-color:rgba(224,82,82,0.3);background:rgba(224,82,82,0.04);">
+            <div class="section-label" style="color:var(--red);">Analysis Error</div>
+            <div id="errorMsg" style="color:var(--text-secondary);font-size:13px;margin-top:0.5rem;"></div>
+        </div>
+
     </div>
-    
-    <div id="results-section" class="hidden">
-        <div class="bg-green-900/30 border border-green-500/30 rounded-xl p-6 mb-6">
-            <h2 class="text-2xl font-bold mb-4 text-green-400">
-                <i class="fas fa-check-circle mr-2"></i>Analysis Complete
-            </h2>
-            <div id="analysis-result"></div>
+
+    <!-- Right: Context Panel -->
+    <div style="display:flex;flex-direction:column;gap:1.5rem;">
+
+        <!-- Agent Pipeline -->
+        <div class="card">
+            <div class="section-label" style="margin-bottom:0.875rem;">Agent Pipeline</div>
+            <div style="display:flex;flex-direction:column;gap:0.75rem;">
+                <div style="display:flex;gap:10px;align-items:flex-start;">
+                    <div id="agent1-dot" style="width:28px;height:28px;min-width:28px;border-radius:50%;background:rgba(91,155,213,0.15);border:1px solid rgba(91,155,213,0.3);display:flex;align-items:center;justify-content:center;margin-top:2px;">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                    </div>
+                    <div>
+                        <div style="font-size:13px;font-weight:600;">Quant Desk</div>
+                        <div id="agent1-status" style="font-size:11px;color:var(--text-muted);">Waiting to start</div>
+                    </div>
+                </div>
+                <div style="display:flex;gap:10px;align-items:flex-start;">
+                    <div id="agent2-dot" style="width:28px;height:28px;min-width:28px;border-radius:50%;background:rgba(139,110,216,0.15);border:1px solid rgba(139,110,216,0.3);display:flex;align-items:center;justify-content:center;margin-top:2px;">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="2.5"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/></svg>
+                    </div>
+                    <div>
+                        <div style="font-size:13px;font-weight:600;">Macro Desk</div>
+                        <div id="agent2-status" style="font-size:11px;color:var(--text-muted);">Waiting to start</div>
+                    </div>
+                </div>
+                <div style="display:flex;gap:10px;align-items:flex-start;">
+                    <div id="agent3-dot" style="width:28px;height:28px;min-width:28px;border-radius:50%;background:rgba(201,168,76,0.15);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;margin-top:2px;">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--gold-light)" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+                    </div>
+                    <div>
+                        <div style="font-size:13px;font-weight:600;">CIO Hub (Strategist)</div>
+                        <div id="agent3-status" style="font-size:11px;color:var(--text-muted);">Waiting to start</div>
+                    </div>
+                </div>
+            </div>
         </div>
-        <button onclick="window.location.href='/dashboard'" class="btn-primary px-6 py-3 rounded-lg">
-            <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard
-        </button>
-    </div>
-    
-    <div id="error-section" class="hidden">
-        <div class="bg-red-900/30 border border-red-500/30 rounded-xl p-6">
-            <h2 class="text-2xl font-bold mb-4 text-red-400">Analysis Failed</h2>
-            <p id="error-message"></p>
-        </div>
+
     </div>
 </div>
 
 <script>
-let pollInterval;
+let pollTimer = null;
+let rawResult = '';
 
-function checkStatus() {
-    fetch('/api/analysis-status')
-        .then(r => r.json())
-        .then(data => {
-            document.getElementById('progress-bar').style.width = data.progress + '%';
-            document.getElementById('status-message').textContent = data.message;
-            
-            if (!data.running && data.result) {
-                clearInterval(pollInterval);
-                document.getElementById('progress-section').classList.add('hidden');
-                document.getElementById('results-section').classList.remove('hidden');
-                document.getElementById('analysis-result').innerHTML = '<pre class="text-gray-300 whitespace-pre-wrap">' + data.result + '</pre>';
-            }
-            
-            if (!data.running && data.error) {
-                clearInterval(pollInterval);
-                document.getElementById('progress-section').classList.add('hidden');
-                document.getElementById('error-section').classList.remove('hidden');
-                document.getElementById('error-message').textContent = data.error;
-            }
-        });
+// --- Start analysis ---
+async function startAnalysis() {
+    document.getElementById('runBtn').disabled = true;
+    document.getElementById('runBtn').innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;"></div> Running...';
+    document.getElementById('progressCard').style.display = 'block';
+    document.getElementById('resultsCard').style.display = 'none';
+    document.getElementById('errorCard').style.display = 'none';
+
+    setAgentStatus(1, 'Analyzing multi-asset tech...', true);
+    setAgentStatus(2, 'Waiting...', false);
+    setAgentStatus(3, 'Waiting...', false);
+
+    try {
+        const r = await fetch('/api/start-analysis', { method: 'POST' });
+        const d = await r.json();
+        if (!d.success) throw new Error(d.error || 'Failed to start');
+        pollTimer = setInterval(pollStatus, 2500);
+    } catch(e) {
+        showError(e.message);
+        resetBtn();
+    }
 }
 
-// Start analysis on page load
-fetch('/api/start-analysis', {method: 'POST'})
-    .then(() => {
-        pollInterval = setInterval(checkStatus, 2000);
-        checkStatus();
-    });
+// --- Poll status ---
+async function pollStatus() {
+    try {
+        const r = await fetch('/api/analysis-status');
+        const d = await r.json();
+
+        document.getElementById('progressFill').style.width = d.progress + '%';
+        document.getElementById('progressPct').textContent = d.progress + '%';
+        document.getElementById('progressMsg').textContent = d.message || '...';
+
+        if (d.progress >= 30) setAgentStatus(1, 'Complete', false, true);
+        if (d.progress >= 50) { setAgentStatus(2, 'Analyzing news & fundamentals...', true); }
+        if (d.progress >= 75) { setAgentStatus(2, 'Complete', false, true); setAgentStatus(3, 'Synthesizing mandate...', true); }
+        if (d.progress >= 100) { setAgentStatus(3, 'Complete', false, true); }
+
+        if (!d.running) {
+            clearInterval(pollTimer);
+            if (d.error) {
+                showError(d.error);
+            } else if (d.result) {
+                showResults(d.result, d.parsed_data);
+            }
+            document.getElementById('progressCard').style.display = 'none';
+            resetBtn();
+        }
+    } catch(e) {
+        clearInterval(pollTimer);
+        showError('Status check failed: ' + e.message);
+        resetBtn();
+    }
+}
+
+// --- Render results ---
+function showResults(text, parsedData) {
+    rawResult = text;
+    document.getElementById('resultsCard').style.display = 'block';
+    
+    // Convert new lines to HTML breaks for simple presentation
+    let formattedText = text.replace(/\n/g, '<br/>');
+    // Basic Markdown bold to HTML bold
+    formattedText = formattedText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    
+    document.getElementById('analysisContent').innerHTML = formattedText;
+}
+
+function showError(msg) {
+    document.getElementById('errorCard').style.display = 'block';
+    document.getElementById('errorMsg').textContent = msg;
+}
+
+function resetBtn() {
+    const btn = document.getElementById('runBtn');
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg> Run Analysis';
+}
+
+function setAgentStatus(n, msg, active, done) {
+    const el = document.getElementById('agent' + n + '-status');
+    if (el) {
+        el.textContent = msg;
+        el.style.color = done ? 'var(--green)' : active ? 'var(--gold-light)' : 'var(--text-muted)';
+    }
+}
+
+function downloadReport() {
+    if (!rawResult) return;
+    const blob = new Blob([rawResult], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'institutional-mandate-' + new Date().toISOString().split('T')[0] + '.txt';
+    a.click();
+    URL.revokeObjectURL(url);
+}
 </script>
 {% endblock %}
